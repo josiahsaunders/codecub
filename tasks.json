@@ -2,7 +2,8 @@
   {
     "id": "001-two-sum",
     "title": "1. Two Sum",
-    "difficulty": "Easy"
+    "difficulty": "Easy",
+    "test_case_count": 3
   },
   {
     "id": "002-contains-duplicate",

@@ -1,60 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Python Visual Judge</title>
-        
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Code Judge</title>
+        <link rel="stylesheet" href="style.css" />
+
+        <!-- CodeMirror CSS & JS (or swap with Monaco) -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+
         <!-- Pyodide -->
-        <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
-
-        <!-- Ace Editor CDN (Zero global AMD pollution, works natively with Pyodide) -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
-
-        <style>
-            * { box-sizing: border-box; }
-            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1rem; background-color: #1e1e2e; color: #cdd6f4; }
-            
-            header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #45475a; }
-            #status { font-weight: bold; font-size: 0.9rem; color: #f9e2af; }
-            
-            .container { display: flex; gap: 1rem; height: calc(100vh - 90px); }
-            .left-panel { flex: 1; background: #181825; padding: 1.5rem; border-radius: 8px; overflow-y: auto; border: 1px solid #313244; }
-            .right-panel { flex: 1.2; display: flex; flex-direction: column; gap: 0.5rem; }
-
-            #problem-select { width: 100%; padding: 8px; font-size: 1rem; margin-bottom: 1rem; background: #313244; color: #fff; border: 1px solid #45475a; border-radius: 4px; }
-            .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; background: #a6e3a1; color: #11111b; font-weight: bold; margin-bottom: 1rem; }
-            
-            #description h1, #description h2, #description h3 { color: #89b4fa; margin-top: 1rem; margin-bottom: 0.5rem; }
-            #description p { line-height: 1.6; margin-bottom: 0.8rem; }
-            #description code { background: #313244; color: #f38ba8; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
-
-            #editor-container { flex: 2; border-radius: 8px; overflow: hidden; border: 1px solid #45475a; }
-            #run-btn { padding: 12px; font-size: 1rem; font-weight: bold; background-color: #89b4fa; color: #11111b; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; }
-            #run-btn:hover:not(:disabled) { background-color: #b4befe; }
-            #run-btn:disabled { background-color: #585b70; cursor: not-allowed; }
-            
-            #output { flex: 1; background: #11111b; color: #a6e3a1; padding: 1rem; font-family: monospace; border-radius: 8px; overflow-y: auto; white-space: pre-wrap; border: 1px solid #45475a; }
-        </style>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     </head>
     <body>
-        <header>
-            <h2>Visual Judge</h2>
-            <span id="status">Initializing system...</span>
-        </header>
 
-        <div class="container">
-            <div class="left-panel">
-                <select id="problem-select"></select>
-                <span id="difficulty" class="badge">Easy</span>
-                <div id="description">Loading problem description...</div>
+        <div class="app-container">
+            <!-- Sidebar / Navigation -->
+            <aside class="sidebar">
+            <h2>Tasks</h2>
+            <select id="taskSelect">
+                <option value="">Select a task...</option>
+            </select>
+            <div id="taskDescription" class="markdown-body">
+                <p>Select a task from the dropdown to get started.</p>
+            </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="editor-section">
+            <!-- Editor Toolbar -->
+            <div class="editor-header">
+                <div class="file-actions">
+                    <button id="resetBtn" class="btn btn-secondary" title="Reset script">Reset Code</button>
+                    <button id="saveBtn" class="btn btn-secondary" title="Download Python script">Save File</button>
+                    <button id="loadBtn" class="btn btn-secondary" title="Load Python script from disk">Load File</button>
+                    <!-- Hidden file input for uploading -->
+                    <input type="file" id="fileInput" accept=".py,.txt" style="display: none;" />
+                </div>
+
+                <div class="execution-actions">
+                    <button id="runBtn" class="btn btn-secondary" disabled>Run Examples</button>
+                    <button id="submitBtn" class="btn btn-primary" disabled>Submit</button>
+                </div>
             </div>
 
-            <div class="right-panel">
-                <div id="editor-container"></div>
-                <button id="run-btn" disabled>Run Tests</button>
-                <div id="output">Results will appear here...</div>
+            <!-- Code Editor Container -->
+            <div class="editor-wrapper">
+                <textarea id="codeEditor"></textarea>
             </div>
+
+            <!-- Console / Results Output Panel -->
+            <div class="output-panel">
+                <div class="output-header">Console Output</div>
+                <pre id="outputConsole">Initializing Python runtime...</pre>
+            </div>
+            </main>
         </div>
 
         <script src="app.js"></script>

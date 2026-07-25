@@ -1,0 +1,182 @@
+/* --- CSS Reset & Global Vars --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-dark: #121214;
+  --bg-panel: #1e1e24;
+  --bg-sidebar: #18181c;
+  --border-color: #2e2e38;
+  --text-main: #e1e1e6;
+  --text-muted: #a0a0b0;
+  --accent-primary: #00e676;
+  --accent-secondary: #3b82f6;
+  --btn-hover: #2a2a35;
+  --font-mono: 'Fira Code', 'Courier New', Courier, monospace;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- Layout Grid --- */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* --- Sidebar (Tasks & Instructions) --- */
+.sidebar {
+  width: 320px;
+  min-width: 250px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+#taskSelect {
+  width: 100%;
+  padding: 0.6rem;
+  background-color: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: pointer;
+}
+
+#taskSelect:focus {
+  border-color: var(--accent-secondary);
+}
+
+.markdown-body {
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.markdown-body p {
+  margin-bottom: 0.8rem;
+}
+
+/* --- Main Editor & Console Section --- */
+.editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-dark);
+}
+
+/* --- Toolbar Header --- */
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-actions, .execution-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --- Buttons --- */
+.btn {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-main);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--btn-hover);
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: #000;
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #00c853;
+}
+
+/* --- CodeMirror Wrapper --- */
+.editor-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.CodeMirror {
+  height: 100% !important;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+/* --- Console / Output Panel --- */
+.output-panel {
+  height: 220px;
+  background-color: #0d0d10;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.output-header {
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background-color: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
+}
+
+#outputConsole {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-primary);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
