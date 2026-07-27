@@ -1,5 +1,3 @@
-# 1. Two Sum (2つの数の和)
-
 与えられた整数の配列 `nums` と目標値 `target` に対し、足して `target` になる2つの数字のインデックス（位置）を返してください。
 
 *(Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.)*

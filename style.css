@@ -35,7 +35,7 @@ body {
 
 /* --- Sidebar (Tasks & Instructions) --- */
 .sidebar {
-  width: 320px;
+  width: 33%;
   min-width: 250px;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);

@@ -20,13 +20,26 @@ const fileInput = document.getElementById("fileInput");
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
   if (!md) return '';
+
   return md
+    // Headers (#, ##, ###)
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$2</h2>')
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    
+    // Bold: **text** -> <strong>text</strong>
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    
+    // Italics: *text* -> <em>text</em>  <-- THIS WAS MISSING!
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    
+    // Inline code: `code` -> <code>code</code>
     .replace(/`(.*?)`/g, '<code>$1</code>')
+    
+    // Unordered lists: - item -> <li>item</li>
     .replace(/^\- (.*$)/gim, '<li>$1</li>')
+    
+    // Line breaks / paragraphs
     .replace(/\n\n/g, '<br><br>');
 }
 
@@ -175,17 +188,13 @@ function resetCodeToStarter() {
   if (!currentTaskData || !editor) return;
 
   const confirmReset = confirm(
-    "Are you sure you want to reset your editor? All unsaved changes for this task will be lost."
+    "エディタの内容を初期状態に戻しますか？\n（入力中のコードは消去されます）"
   );
 
   if (confirmReset) {
-    // Remove task draft from localStorage
     localStorage.removeItem(STORAGE_PREFIX + currentTaskData.meta.id);
-
-    // Re-populate editor with starter code
-    editor.setValue(currentTaskData.starterCode || "# Write your solution here\n");
-    
-    outputElem.innerText = `Reset editor to default starter code for '${currentTaskData.meta.title}'.`;
+    editor.setValue(currentTaskData.starterCode || "# ここにコードを記述してください\n");
+    outputElem.innerText = `『${currentTaskData.meta.title}』のコードを初期化しました。`;
   }
 }
 
@@ -243,29 +252,27 @@ async function executeSuite(isSubmission = false) {
 
   runBtn.disabled = true;
   submitBtn.disabled = true;
+
   outputElem.innerText = isSubmission 
-    ? "Submitting & running full test suite...\n" 
-    : "Running example test cases...\n";
+    ? "採点中... 全テストケースを実行しています\n" 
+    : "サンプルテストを実行中...\n";
 
   const userCode = editor ? editor.getValue() : "";
 
   try {
-    // Examples run first 3 tests (or exampleCount from tasks.json), Submit runs all
     const EXAMPLE_COUNT = currentTaskData.meta.exampleCount || 3;
     const testsToRun = isSubmission
       ? currentTaskData.tests
       : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
 
-    // Load task's evaluator.py into Pyodide scope
     await pyodide.runPythonAsync(currentTaskData.evaluatorPy);
     const evaluateTask = pyodide.globals.get("evaluate_task");
 
     const results = [];
     let passedCount = 0;
-    let totalCpuMs = 0; // Summed CPU time from time.process_time()
+    let totalCpuMs = 0;
 
     for (const test of testsToRun) {
-      // Evaluate test via evaluate_task(user_code_str, in_text, out_text)
       const rawResult = evaluateTask(userCode, test.input, test.expectedOutput);
       const res = JSON.parse(rawResult);
       res.id = test.id;
@@ -278,29 +285,31 @@ async function executeSuite(isSubmission = false) {
       }
     }
 
-    // Output formatting
-    const modeLabel = isSubmission ? "Full Submission" : "Example Run";
+    // Japanese Console Output Header
+    const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
     let outputText = `=== ${modeLabel} ===\n`;
-    outputText += `Passed: ${passedCount} / ${testsToRun.length} tests\n`;
-    outputText += `Total CPU Time: ${totalCpuMs.toFixed(3)} ms\n`;
+    outputText += `正解数 (Passed): ${passedCount} / ${testsToRun.length} ケース\n`;
+    outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
     outputText += `----------------------------------------\n\n`;
 
     results.forEach((r) => {
       if (r.status === "SUCCESS") {
         const icon = r.passed ? "✅" : "❌";
-        outputText += `${icon} Test ${r.id}: ${r.passed ? "PASSED" : "FAILED"} (${r.runtime_ms.toFixed(3)} ms)\n`;
+        const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
+        outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms)\n`;
         if (!r.passed) {
-          outputText += `   Got: ${JSON.stringify(r.got)} | Expected: ${JSON.stringify(r.expected)}\n`;
+          outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
+          outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;
         }
       } else {
-        outputText += `💥 Test ${r.id}: ${r.status} - ${r.error}\n`;
+        outputText += `💥 テスト ${r.id}: 実行エラー (${r.status}) - ${r.error}\n`;
       }
     });
 
     outputElem.innerText = outputText;
 
   } catch (err) {
-    outputElem.innerText = `❌ [Execution Error]\n${err}`;
+    outputElem.innerText = `❌ [システムエラー]\n${err}`;
   } finally {
     runBtn.disabled = false;
     submitBtn.disabled = false;
