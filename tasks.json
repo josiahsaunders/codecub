@@ -3,11 +3,7 @@
     "id": "001-two-sum",
     "title": "1. Two Sum",
     "difficulty": "Easy",
-    "test_case_count": 3
-  },
-  {
-    "id": "002-contains-duplicate",
-    "title": "2. Contains Duplicate",
-    "difficulty": "Easy"
+    "testCount": 3,
+    "tags": ["array", "hash-table"]
   }
 ]

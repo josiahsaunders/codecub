@@ -53,6 +53,18 @@ body {
   color: var(--text-muted);
 }
 
+#tagSelect {
+  width: 100%;
+  padding: 0.6rem;
+  background-color: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: pointer;
+}
+
 #taskSelect {
   width: 100%;
   padding: 0.6rem;

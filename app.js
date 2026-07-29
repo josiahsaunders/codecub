@@ -2,11 +2,13 @@
 let pyodide = null;
 let editor = null;
 let currentTaskData = null; // Holds { meta, descriptionText, starterCode, evaluatorPy, tests }
+let tagsList = [];
 let tasksCatalog = [];
 
 const STORAGE_PREFIX = "judge_code_task_";
 
 // --- DOM Elements ---
+const filterSelect = document.getElementById("tagSelect");
 const problemSelect = document.getElementById("taskSelect");
 const descriptionElem = document.getElementById("taskDescription");
 const outputElem = document.getElementById("outputConsole");
@@ -75,6 +77,17 @@ async function initApp() {
   saveBtn.addEventListener("click", saveCodeToFile);
   loadBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", loadCodeFromFile);
+  filterSelect.addEventListener("change", (e) => {
+    const selectedTag = e.target.value;
+    renderTaskList(selectedTag);
+
+    // Load the first available task in the filtered view
+    if (problemSelect.value !== "") {
+      const taskIdx = parseInt(problemSelect.value, 10);
+      loadTaskFolder(tasksCatalog[taskIdx]);
+    }
+  });
+  
   problemSelect.addEventListener("change", async (e) => {
     const selectedTask = tasksCatalog[e.target.value];
     if (selectedTask) await loadTaskFolder(selectedTask);
@@ -126,12 +139,28 @@ async function loadCatalog() {
     if (!response.ok) throw new Error("Could not find tasks.json");
     
     tasksCatalog = await response.json();
-    problemSelect.innerHTML = tasksCatalog.map((task, idx) => 
-      `<option value="${idx}">${task.title}</option>`
-    ).join('');
+    
+    // Get unique list of all tags
+    tasksCatalog.forEach(task => {
+      if (Array.isArray(task.tags)) {
+        task.tags.forEach(tag => {
+          if (!tagsList.includes(tag)) {
+            tagsList.push(tag);
+          }
+        });
+      }
+    });
+    tagsList.sort();
+    
+    // Populate tag filter dropdown
+    filterSelect.innerHTML = '<option value="ALL">すべてのタグ (All Tags)</option>' + tagsList.map(tag => `<option value="${tag}">${tag}</option>`).join('');
 
-    if (tasksCatalog.length > 0) {
-      await loadTaskFolder(tasksCatalog[0]);
+    renderTaskList("ALL");
+
+    // Load the first available task in the filtered view
+    if (problemSelect.value !== "") {
+      const taskIdx = parseInt(problemSelect.value, 10);
+      loadTaskFolder(tasksCatalog[taskIdx]);
     }
   } catch (err) {
     descriptionElem.innerText = "Error loading tasks catalog.";
@@ -155,7 +184,7 @@ async function loadTaskFolder(taskMeta) {
     ]);
 
     // Fetch unpadded test files (1.in to N.in)
-    const count = taskMeta.test_case_count || taskMeta.testCount || 10;
+    const count = taskMeta.testCount;
     const testCases = await loadTestCases(folderPath, count);
 
     currentTaskData = {
@@ -181,6 +210,26 @@ async function loadTaskFolder(taskMeta) {
   } catch (err) {
     outputElem.innerText = `❌ [Error loading task folder]\n${err.message}`;
   }
+}
+
+function renderTaskList(selectedTag = "ALL") {
+  // Filter tasks based on the selected tag
+  const matchingTasks = tasksCatalog.filter(task => {
+    if (selectedTag === "ALL") return true;
+    return task.tags && task.tags.includes(selectedTag);
+  });
+
+  // Re-populate problemSelect options storing original index or task id
+  if (matchingTasks.length === 0) {
+    problemSelect.innerHTML = '<option value="">該当する課題がありません</option>';
+    return;
+  }
+
+  problemSelect.innerHTML = matchingTasks.map(task => {
+    // Find the original index in tasksCatalog
+    const originalIdx = tasksCatalog.findIndex(t => t.id === task.id);
+    return `<option value="${originalIdx}">${task.title}</option>`;
+  }).join('');
 }
 
 // --- 4. LocalStorage & File Persistence ---
