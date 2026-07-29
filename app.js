@@ -320,6 +320,8 @@ async function executeSuite(isSubmission = false) {
     const results = [];
     let passedCount = 0;
     let totalCpuMs = 0;
+    let stoppedEarly = false;
+    let failedTestId = null;
 
     for (const test of testsToRun) {
       const rawResult = evaluateTask(userCode, test.input, test.expectedOutput);
@@ -328,16 +330,33 @@ async function executeSuite(isSubmission = false) {
 
       results.push(res);
 
-      if (res.status === "SUCCESS") {
+      if (res.status === "SUCCESS" && res.passed) {
+        passedCount++;
         totalCpuMs += res.runtime_ms;
-        if (res.passed) passedCount++;
+      } else {
+        if (res.status === "SUCCESS") {
+          totalCpuMs += res.runtime_ms;
+        }
+
+        if (isSubmission) {
+          stoppedEarly = true;
+          failedTestId = test.id;
+          break;
+        }
       }
     }
 
     // Japanese Console Output Header
     const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
     let outputText = `=== ${modeLabel} ===\n`;
-    outputText += `正解数 (Passed): ${passedCount} / ${testsToRun.length} ケース\n`;
+    
+    if (stoppedEarly) {
+      outputText += `❌ 採点中断: テストケース ${failedTestId} で失敗しました。\n`;
+      outputText += `パスしたケース数: ${passedCount} / ${testsToRun.length}\n`;
+    } else {
+      outputText += `正解数 (Passed): ${passedCount} / ${testsToRun.length} ケース\n`;
+    }
+
     outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
     outputText += `----------------------------------------\n\n`;
 
@@ -354,6 +373,10 @@ async function executeSuite(isSubmission = false) {
         outputText += `💥 テスト ${r.id}: 実行エラー (${r.status}) - ${r.error}\n`;
       }
     });
+
+    if (stoppedEarly) {
+      outputText += `\n⚠️ 以降のテストケースの実行はスキップされました。`;
+    }
 
     outputElem.innerText = outputText;
 
