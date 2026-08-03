@@ -1,3 +1,2 @@
-class SupportClass1:
-    def testOne(self):
-        pass
+def testOne(input: str) -> int:
+    return len(input);

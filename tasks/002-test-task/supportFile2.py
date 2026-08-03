@@ -1,3 +1,2 @@
-class SupportClass2:
-    def testTwo(self):
-        pass
+def testTwo(input: str, num: int) -> str:
+    return input[num];
