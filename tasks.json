@@ -5,5 +5,12 @@
     "difficulty": "Easy",
     "testCount": 3,
     "tags": ["array", "hash-table"]
+  },
+  {
+    "id": "002-test-task",
+    "title": "2. Test Task",
+    "difficulty": "Easy",
+    "testCount": 3,
+    "supportFiles": ["supportFile1.py", "supportFile2.py"]
   }
 ]
