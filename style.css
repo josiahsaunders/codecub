@@ -153,13 +153,34 @@ body {
 .editor-wrapper {
   flex: 1;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
-.CodeMirror {
+#editor-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+#editor-wrapper .CodeMirror {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 100% !important;
   font-family: var(--font-mono);
   font-size: 14px;
+  background-color: var(--bg-dark);
+}
+
+/* Force CodeMirror's inner scroll container to fill 100% height */
+#editor-wrapper .CodeMirror-scroll {
+  height: 100% !important;
+  min-height: 100% !important;
 }
 
 /* --- Console / Output Panel --- */
@@ -191,4 +212,70 @@ body {
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* --- Tab Strip Container --- */
+.tab-strip {
+  display: flex;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  padding-left: 0.5rem;
+  overflow-x: auto;
+}
+
+.editor-tab {
+  padding: 0.4rem 0.9rem;
+  background-color: var(--bg-sidebar);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  margin-right: 4px;
+  margin-top: 4px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.editor-tab:hover {
+  background-color: var(--btn-hover);
+  color: var(--text-main);
+}
+
+.editor-tab.active {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  border-top: 2px solid var(--accent-secondary);
+  font-weight: 600;
+}
+
+.editor-tab .lock-icon {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+/* --- Read-Only File Viewer Box --- */
+.readonly-view {
+  flex: 1; /* Fills remaining height identically to #editor-wrapper */
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: auto; /* Handles internal scrolling for long support files */
+}
+
+.readonly-view pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.hidden {
+  display: none !important;
 }

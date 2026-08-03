@@ -50,9 +50,19 @@
                 </div>
             </div>
 
+            <!-- Tab strip container -->
+             <div id="editorTabs" class="tab-strip">
+                <!-- Dynamically populated by app.js -->
+             </div>
+
             <!-- Code Editor Container -->
-            <div class="editor-wrapper">
+            <div id="editor-wrapper">
                 <textarea id="codeEditor"></textarea>
+            </div>
+
+            <!-- Read-only view container for support filers (hidden by default) -->
+            <div id="readonlyFileView" class="readonly-view hidden">
+                <pre><code id="readonlyCodeContent"></code></pre>
             </div>
 
             <!-- Console / Results Output Panel -->

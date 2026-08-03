@@ -4,6 +4,7 @@ let editor = null;
 let currentTaskData = null; // Holds { meta, descriptionText, starterCode, evaluatorPy, tests }
 let tagsList = [];
 let tasksCatalog = [];
+let activeTabFilename = "starter.py";
 
 const STORAGE_PREFIX = "judge_code_task_";
 
@@ -18,6 +19,10 @@ const resetBtn = document.getElementById("resetBtn");
 const saveBtn = document.getElementById("saveBtn");
 const loadBtn = document.getElementById("loadBtn");
 const fileInput = document.getElementById("fileInput");
+const editorTabsElem = document.getElementById("editorTabs");
+const editorContainerElem = document.getElementById("editor-wrapper");
+const readonlyViewElem = document.getElementById("readonlyFileView");
+const readonlyCodeContentElem = document.getElementById("readonlyCodeContent");
 
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
@@ -183,6 +188,15 @@ async function loadTaskFolder(taskMeta) {
       fetchText(`${folderPath}/evaluator.py`)
     ]);
 
+    const supportPromises = taskMeta.supportFiles
+      ? taskMeta.supportFiles.map(async (filename) => {
+        const content = await fetchText(`${folderPath}/${filename}`);
+        return { filename, content };
+      })
+      : [];
+
+    const supportFiles = await Promise.all(supportPromises);
+
     // Fetch unpadded test files (1.in to N.in)
     const count = taskMeta.testCount;
     const testCases = await loadTestCases(folderPath, count);
@@ -192,6 +206,7 @@ async function loadTaskFolder(taskMeta) {
       descriptionMarkdown: descText,
       starterCode: starterText,
       evaluatorPy: evalText,
+      supportFiles: supportFiles,
       tests: testCases
     };
 
@@ -200,6 +215,9 @@ async function loadTaskFolder(taskMeta) {
 
     // Restore saved user code or load default starter.py
     loadCodeForTask(currentTaskData);
+
+    // Reset active tab to main starter code and render tab bar
+    switchTab("starter.py");
 
     if (pyodide) {
       runBtn.disabled = false;
@@ -230,6 +248,54 @@ function renderTaskList(selectedTag = "ALL") {
     const originalIdx = tasksCatalog.findIndex(t => t.id === task.id);
     return `<option value="${originalIdx}">${task.title}</option>`;
   }).join('');
+}
+
+function renderEditorTabs() {
+  if (!editorTabsElem || !currentTaskData) return;
+
+  editorTabsElem.innerHTML = "";
+
+  // Main editable tab
+  const mainTab = document.createElement("button");
+  mainTab.className = `editor-tab ${activeTabFilename === "starter.py" ? "active" : ""}`;
+  mainTab.innerText = "starter.py";
+  mainTab.onclick = () => switchTab("starter.py");
+  editorTabsElem.appendChild(mainTab);
+
+  // Support file tabs (Read-only)
+  if (currentTaskData.supportFiles && currentTaskData.supportFiles.length > 0) {
+    currentTaskData.supportFiles.forEach(file => {
+      const tab = document.createElement("button");
+      const isActive = activeTabFilename === file.filename;
+      tab.className = `editor-tab ${isActive ? "active" : ""}`;
+      tab.innerHTML = `${file.filename} <span class="lock-icon">🔒</span>`;
+      tab.title = "Read-Only Reference File";
+      tab.onclick = () => switchTab(file.filename);
+      editorTabsElem.appendChild(tab);
+    })
+  }
+}
+
+function switchTab(filename) {
+  activeTabFilename = filename;
+
+  if (filename === "starter.py") {
+    // Show CodeMirror Editor
+    editorContainerElem.classList.remove("hidden");
+    readonlyViewElem.classList.add("hidden");
+    if (editor) editor.refresh();
+  } else {
+    // Find support file content
+    const supportFile = currentTaskData.supportFiles.find(f => f.filename === filename);
+    if (supportFile) {
+      readonlyCodeContentElem.innerText = supportFile.content;
+      editorContainerElem.classList.add("hidden");
+      readonlyViewElem.classList.remove("hidden");
+    }
+  }
+
+  // Re-render tab states
+  renderEditorTabs();
 }
 
 // --- 4. LocalStorage & File Persistence ---
@@ -305,8 +371,17 @@ async function executeSuite(isSubmission = false) {
   outputElem.innerText = isSubmission 
     ? "採点中... 全テストケースを実行しています\n" 
     : "サンプルテストを実行中...\n";
+  
+  // Sync support files to Pyodide's virtual filesystem
+  if (currentTaskData.supportFiles && currentTaskData.supportFiles.length > 0) {
+    currentTaskData.supportFiles.forEach(file => {
+      pyodide.FS.writeFile(file.filename, file.content, { encoding: 'utf8' });
+    });
+  }
 
   const userCode = editor ? editor.getValue() : "";
+
+  let evaluateTask = null;
 
   try {
     const EXAMPLE_COUNT = currentTaskData.meta.exampleCount || 3;
@@ -315,7 +390,7 @@ async function executeSuite(isSubmission = false) {
       : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
 
     await pyodide.runPythonAsync(currentTaskData.evaluatorPy);
-    const evaluateTask = pyodide.globals.get("evaluate_task");
+    evaluateTask = pyodide.globals.get("evaluate_task");
 
     const results = [];
     let passedCount = 0;
@@ -383,6 +458,9 @@ async function executeSuite(isSubmission = false) {
   } catch (err) {
     outputElem.innerText = `❌ [システムエラー]\n${err}`;
   } finally {
+    if (evaluateTask && evaluateTask.destroy === "function") {
+      evaluateTask.destroy();
+    }
     runBtn.disabled = false;
     submitBtn.disabled = false;
   }
