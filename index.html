@@ -20,6 +20,16 @@
         <div class="app-container">
             <!-- Sidebar / Navigation -->
             <aside class="sidebar">
+                <!-- User nickname and history controls -->
+                <div class="user-profile-section">
+                    <label for="nicknameInput" class="input-label">ニックネーム (Nickname)</label>
+                    <input type="text" id="nicknameInput" placeholder="例: Yamada123" maxLength="20" />
+                </div>
+                <div class="history-action-section">
+                    <button id="viewHistoryBtn" class="btn btn-secondary width-full">提出履歴を見る (View History)</button>
+                </div>
+
+                <!-- Tag filter and tasks list -->
                 <h2>Tasks</h2>
                 <select id="tagSelect">
                     <option value="">Select a tag...</option>
@@ -27,6 +37,8 @@
                 <select id="taskSelect">
                     <option value="">Select a task...</option>
                 </select>
+
+                <!-- Task description -->
                 <div id="taskDescription" class="markdown-body">
                     <p>Select a task from the dropdown to get started.</p>
                 </div>
@@ -71,6 +83,21 @@
                 <pre id="outputConsole">Initializing Python runtime...</pre>
             </div>
             </main>
+        </div>
+
+        <!-- Submission history modal -->
+        <div id="historyModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>提出履歴 (Submission History)</h3>
+                    <button id="closeHistoryBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="historyListContainer">
+                        <!-- Dynamically populated by app.js -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <script src="app.js"></script>
