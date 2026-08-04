@@ -3,7 +3,7 @@
     "id": "001-two-sum",
     "title": "1. Two Sum",
     "difficulty": "Easy",
-    "testCount": 3,
+    "testCount": 7,
     "tags": ["array", "hash-table"]
   },
   {

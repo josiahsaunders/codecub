@@ -1,7 +1,7 @@
 import json
 import time
-import io
-import sys
+import gc
+import tracemalloc
 
 def evaluate_task(user_code_str, in_text, out_text):
     # 1. Safely load the student's class definition
@@ -13,6 +13,9 @@ def evaluate_task(user_code_str, in_text, out_text):
         return json.dumps({"status": "COMPILE_ERROR", "error": str(e)})
 
     try:
+        gc.collect()
+        tracemalloc.start()
+        
         # 2. Parse stdin text into Python data types
         lines = [line.strip() for line in in_text.strip().split('\n') if line.strip()]
         
@@ -28,6 +31,11 @@ def evaluate_task(user_code_str, in_text, out_text):
         start_time = time.perf_counter()
         actual = sol.twoSum(nums, target)
         end_time = time.perf_counter()
+        current_bytes, peak_bytes = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        # Convert peak bytes to Megabytes (MB)
+        peak_mb = round(peak_bytes / (1024 * 1024), 2)
 
         # 5. Flexible validation (e.g. order-insensitive for indices)
         passed = sorted(actual) == sorted(expected)
@@ -36,6 +44,7 @@ def evaluate_task(user_code_str, in_text, out_text):
             "status": "SUCCESS",
             "passed": passed,
             "runtime_ms": round((end_time - start_time) * 1000, 3),
+            "peak_mb": peak_mb,
             "got": actual,
             "expected": expected
         })

@@ -395,6 +395,7 @@ async function executeSuite(isSubmission = false) {
     const results = [];
     let passedCount = 0;
     let totalCpuMs = 0;
+    let maxPeakMb = 0;
     let stoppedEarly = false;
     let failedTestId = null;
 
@@ -404,6 +405,10 @@ async function executeSuite(isSubmission = false) {
       res.id = test.id;
 
       results.push(res);
+
+      if (typeof res.peak_mb === "number") {
+        maxPeakMb = Math.max(maxPeakMb, res.peak_mb);
+      }
 
       if (res.status === "SUCCESS" && res.passed) {
         passedCount++;
@@ -433,13 +438,14 @@ async function executeSuite(isSubmission = false) {
     }
 
     outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
+    outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(maxPeakMb)}\n`;
     outputText += `----------------------------------------\n\n`;
 
     results.forEach((r) => {
       if (r.status === "SUCCESS") {
         const icon = r.passed ? "✅" : "❌";
         const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
-        outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms)\n`;
+        outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
         if (!r.passed) {
           outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
           outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;
@@ -464,6 +470,15 @@ async function executeSuite(isSubmission = false) {
     runBtn.disabled = false;
     submitBtn.disabled = false;
   }
+}
+
+function formatMemory(peakMb) {
+  if (!peakMb || peakMb <= 0) return "0 KB";
+  if (peakMb < 0.1) {
+    const peakKb = peakMb * 1024;
+    return `${peakKb.toFixed(1)} KB`;
+  }
+  return `${peakMb.toFixed(2)} MB`;
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
