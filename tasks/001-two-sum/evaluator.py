@@ -2,6 +2,16 @@ import json
 import time
 import gc
 import tracemalloc
+from complexity_estimator import ComplexityEstimator
+
+# Module-level instance persists across test calls in Pyodide memory space
+if 'GLOBAL_ESTIMATOR' not in globals():
+    GLOBAL_ESTIMATOR = ComplexityEstimator()
+
+def reset_estimator():
+    """Call at the start of a new suite run to clear prior points."""
+    global GLOBAL_ESTIMATOR
+    GLOBAL_ESTIMATOR = ComplexityEstimator()
 
 def evaluate_task(user_code_str, in_text, out_text):
     # 1. Safely load the student's class definition
@@ -15,7 +25,7 @@ def evaluate_task(user_code_str, in_text, out_text):
     try:
         gc.collect()
         tracemalloc.start()
-        
+
         # 2. Parse stdin text into Python data types
         lines = [line.strip() for line in in_text.strip().split('\n') if line.strip()]
         
@@ -24,6 +34,9 @@ def evaluate_task(user_code_str, in_text, out_text):
         # Line 2: Target integer -> 9
         target = int(lines[1])
 
+        # Derive N dynamically from input size
+        n = len(nums)
+
         # 3. Parse stdout/expected output
         expected = list(map(int, out_text.strip().split()))
 
@@ -31,11 +44,16 @@ def evaluate_task(user_code_str, in_text, out_text):
         start_time = time.perf_counter()
         actual = sol.twoSum(nums, target)
         end_time = time.perf_counter()
-        current_bytes, peak_bytes = tracemalloc.get_traced_memory()
+        _, peak_bytes = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-        # Convert peak bytes to Megabytes (MB)
-        peak_mb = round(peak_bytes / (1024 * 1024), 2)
+        # Convert values
+        runtime_ms = (end_time - start_time) * 1000
+        peak_mb = peak_bytes / (1024 * 1024)
+
+        # Record (N, runtime_ms) in shared estimator
+        GLOBAL_ESTIMATOR.add_measurement(n, runtime_ms, peak_mb)
+        complexity_info = GLOBAL_ESTIMATOR.estimate()
 
         # 5. Flexible validation (e.g. order-insensitive for indices)
         passed = sorted(actual) == sorted(expected)
@@ -43,8 +61,9 @@ def evaluate_task(user_code_str, in_text, out_text):
         return json.dumps({
             "status": "SUCCESS",
             "passed": passed,
-            "runtime_ms": round((end_time - start_time) * 1000, 3),
-            "peak_mb": peak_mb,
+            "runtime_ms": round(runtime_ms, 3),
+            "peak_mb": round(peak_mb, 4),
+            "complexity": complexity_info,
             "got": actual,
             "expected": expected
         })

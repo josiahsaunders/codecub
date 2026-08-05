@@ -5,6 +5,7 @@ let currentTaskData = null; // Holds { meta, descriptionText, starterCode, evalu
 let tagsList = [];
 let tasksCatalog = [];
 let activeTabFilename = "starter.py";
+let isSharedLoaded = false;
 
 const STORAGE_PREFIX = "judge_code_task_";
 
@@ -106,6 +107,7 @@ async function initPyodide() {
   try {
     outputElem.innerText = "Loading Pyodide environment...";
     pyodide = await loadPyodide();
+    await loadSharedPythonModules();
     outputElem.innerText = "Ready! Select a task to begin.";
   } catch (err) {
     outputElem.innerText = `❌ Failed to initialize Python runtime: ${err}`;
@@ -113,6 +115,35 @@ async function initPyodide() {
 }
 
 // --- 2. Unpadded Parallel Test Loading (1.in ... N.in) ---
+async function loadSharedPythonModules() {
+  if (isSharedLoaded || !pyodide) return;
+
+  try {
+    const response = await fetch("tasks/complexity_estimator.py");
+    if (!response.ok) {
+      throw new Error(`Failed to load shared estimator: ${response.statusText}`);
+    }
+
+    const estimatorCode = await response.text();
+
+    // Write to Pyodide virtual FS so standard python `import` works
+    pyodide.FS.mkdirTree("/home/pyodide/shared");
+    pyodide.FS.writeFile("/home/pyodide/shared/complexity_estimator.py", estimatorCode);
+
+    // Add path to sys.path
+    await pyodide.runPythonAsync(`
+      import sys
+      if "/home/pyodide/shared" not in sys.path:
+        sys.path.append("/home/pyodide/shared")
+    `);
+
+    isSharedLoaded = true;
+    console.log("✅ Shared Python modules loaded successfully into Pyodide.");
+  } catch (err) {
+    console.error("❌ Error loading shared Python module:", err);
+  }
+}
+
 async function loadTestCases(folderPath, testCount) {
   if (!testCount || testCount <= 0) return [];
 
@@ -380,7 +411,6 @@ async function executeSuite(isSubmission = false) {
   }
 
   const userCode = editor ? editor.getValue() : "";
-
   let evaluateTask = null;
 
   try {
@@ -392,12 +422,16 @@ async function executeSuite(isSubmission = false) {
     await pyodide.runPythonAsync(currentTaskData.evaluatorPy);
     evaluateTask = pyodide.globals.get("evaluate_task");
 
+    // Clear estimator history for fresh submission run
+    await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
+
     const results = [];
     let passedCount = 0;
     let totalCpuMs = 0;
     let maxPeakMb = 0;
     let stoppedEarly = false;
     let failedTestId = null;
+    let latestComplexity = "N/A";
 
     for (const test of testsToRun) {
       const rawResult = evaluateTask(userCode, test.input, test.expectedOutput);
@@ -410,14 +444,17 @@ async function executeSuite(isSubmission = false) {
         maxPeakMb = Math.max(maxPeakMb, res.peak_mb);
       }
 
-      if (res.status === "SUCCESS" && res.passed) {
-        passedCount++;
+      if (res.status === "SUCCESS") {
         totalCpuMs += res.runtime_ms;
-      } else {
-        if (res.status === "SUCCESS") {
-          totalCpuMs += res.runtime_ms;
+        if (res.passed) {
+          passedCount++;
         }
 
+        if (res.complexity) {
+          latestComplexity = res.complexity;
+        }
+
+      } else {
         if (isSubmission) {
           stoppedEarly = true;
           failedTestId = test.id;
@@ -439,6 +476,18 @@ async function executeSuite(isSubmission = false) {
 
     outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
     outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(maxPeakMb)}\n`;
+
+    if (latestComplexity) {
+      const timeComp = latestComplexity.time?.complexity || "N/A";
+      const spaceComp = latestComplexity.space?.complexity || "N/A";
+      
+      outputText += `(Estimated Time Complexity): ${timeComp}\n`;
+      outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
+    } else {
+      outputText += `(Estimated Time Complexity): N/A\n`;
+      outputText += `(Estimated Space Complexity): N/A\n`;
+    }
+
     outputText += `----------------------------------------\n\n`;
 
     results.forEach((r) => {
