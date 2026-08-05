@@ -433,8 +433,9 @@ async function executeSuite(isSubmission = false) {
     let failedTestId = null;
     let latestComplexity = "N/A";
 
-    for (const test of testsToRun) {
-      const rawResult = evaluateTask(userCode, test.input, test.expectedOutput);
+    for (let i = 0; i < testsToRun.length; i++) {
+      const test = testsToRun[i];
+      const rawResult = evaluateTask(userCode, test.input, test.expectedOutput, i);
       const res = JSON.parse(rawResult);
       res.id = test.id;
 
@@ -477,15 +478,17 @@ async function executeSuite(isSubmission = false) {
     outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
     outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(maxPeakMb)}\n`;
 
-    if (latestComplexity) {
-      const timeComp = latestComplexity.time?.complexity || "N/A";
-      const spaceComp = latestComplexity.space?.complexity || "N/A";
-      
-      outputText += `(Estimated Time Complexity): ${timeComp}\n`;
-      outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
-    } else {
-      outputText += `(Estimated Time Complexity): N/A\n`;
-      outputText += `(Estimated Space Complexity): N/A\n`;
+    if (isSubmission) {
+      if (latestComplexity) {
+        const timeComp = latestComplexity.time?.complexity || "N/A";
+        const spaceComp = latestComplexity.space?.complexity || "N/A";
+        
+        outputText += `(Estimated Time Complexity): ${timeComp}\n`;
+        outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
+      } else {
+        outputText += `(Estimated Time Complexity): N/A\n`;
+        outputText += `(Estimated Space Complexity): N/A\n`;
+      }
     }
 
     outputText += `----------------------------------------\n\n`;
