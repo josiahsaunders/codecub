@@ -50,7 +50,6 @@ class ComplexityEstimator:
         # Calculate slope exponent k for memory
         k = self._calculate_log_exponent(self.memory_points)
 
-        # For LeetCode-style total process memory:
         # Base input array loading scales linearly (k ≈ 1.0).
         # Auxiliary structures (hash maps, matrices) increase slope k.
         if k <= 1.10:

@@ -533,4 +533,24 @@ function formatMemory(peakMb) {
   return `${peakMb.toFixed(2)} MB`;
 }
 
+function lockUsername() {
+  const input = document.getElementById("nicknameInput");
+  const btn = document.getElementById("nicknameSetBtn");
+
+  if (input.value.trim() === "") return;
+
+  if (input.hasAttribute("readonly")) {
+    // Unlock for editing
+    input.removeAttribute("readonly");
+    btn.textContent = "設定";
+    btn.classList.remove("is-locked");
+  } else {
+    // Lock name
+    input.setAttribute("readonly", "true");
+    btn.textContent = "編集";
+    btn.classList.add("is-locked");
+    localStorage.setItem("autograder_username", input.value.trim());
+  }
+}
+
 document.addEventListener("DOMContentLoaded", initApp);
