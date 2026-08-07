@@ -53,6 +53,30 @@
                 <div id="taskDescription" class="markdown-body">
                     <p>Select a task from the dropdown to get started.</p>
                 </div>
+
+                <!-- Leaderboard Section -->
+                <div id="leaderboardContainer" class="leaderboard-card hidden">
+                    <div class="leaderboard-header">
+                        <h3>ランキング (Leaderboard)</h3>
+                        <div class="tab-group">
+                            <button id="btnTabTime" class="tab-btn active" onclick="switchLeaderboardTab('time')">⚡ 実行時間</button>
+                            <button id="btnTabMemory" class="tab-btn" onclick="switchLeaderboardTab('memory')">💾 メモリ</button>
+                        </div>
+                    </div>
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>順位</th>
+                                <th>ユーザー</th>
+                                <th id="lbMetricCol">計算量 (時間)</th>
+                                <th id="lbSecondaryCol">平均 (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <!-- Dynamically populated by app.js -->
+                        </tbody>
+                    </table>
+                </div>
             </aside>
 
             <!-- Main Content Area -->

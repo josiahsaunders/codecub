@@ -25,6 +25,10 @@ const editorContainerElem = document.getElementById("editor-wrapper");
 const readonlyViewElem = document.getElementById("readonlyFileView");
 const readonlyCodeContentElem = document.getElementById("readonlyCodeContent");
 const nicknameSetBtn = document.getElementById("nicknameSetBtn");
+// --- Leaderboard State ---
+let currentLeaderboardTab = "time";
+let cachedLeaderboardEntries = [];
+let currentLeaderbaordUsername = "";
 
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
@@ -91,6 +95,8 @@ async function initApp() {
   filterSelect.addEventListener("change", (e) => {
     const selectedTag = e.target.value;
     renderTaskList(selectedTag);
+    const username = document.getElementById("nicknameInput").value.trim() || "匿名";
+    loadAndRenderLeaderboard(selectedTaskId, username);
 
     // Load the first available task in the filtered view
     if (problemSelect.value !== "") {
@@ -612,6 +618,7 @@ async function handleSubmit() {
 
   const currentTaskId = currentTaskData.meta.id;
   await processLeaderboardSubmission(username, currentTaskId, results);
+  await loadAndRenderLeaderboard(currentTaskId, username);
 
   document.getElementById("leaderboardContainer").style.display = "block";
   await loadAndRenderLeaderboard(currentTaskId, username);
@@ -621,6 +628,93 @@ async function loadAndRenderLeaderboard(taskId, username) {
   currentLeaderboardUsername = username;
   cachedLeaderboardEntries = await fetchTaskLeaderboard(taskId);
   renderCondensedTable();
+}
+
+async function loadAndRenderLeaderboard(taskId, username) {
+  const lbContainer = document.getElementById("leaderboardContainer");
+
+  if (!taskId) {
+    lbContainer.classList.add("hidden");
+    return;
+  }
+
+  currentLeaderboardUsername = username || "";
+
+  if (window.fetchTaskLeaderboard) {
+    cachedLeaderboardEntries = await window.fetchTaskLeaderboard(taskId);
+    lbContainer.classList.remove("hidden");
+    renderCondensedTable();
+  }
+}
+
+function switchLeaderboardTab(tab) {
+  currentLeaderboardTab = tab;
+
+  // Update active button styling
+  document.getElementById("btnTabTime").classList.toggle("active", tab === "time");
+  document.getElementById("btnTabMemory").classList.toggle("active", tab === "memory");
+
+  // Update table headers
+  document.getElementById("lbMetricCol").textContent = tab === "time" ? "計算量 (時間)" : "空間計算量";
+  document.getElementById("lbSecondaryCol").textContent = tab === "time" ? "合計時間 (ms)" : "ピーク (MB)";
+
+  renderCondensedTable();
+}
+
+function renderCondensedTable() {
+  const tbody = document.getElementById("leaderboardBody");
+  tbody.innerHTML = "";
+
+  if (cachedLeaderboardEntries.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#a0a0b0;">まだデータがありません</td></tr>`;
+    return;
+  }
+
+  let validEntries = cachedLeaderboardEntries.filter(entry => {
+    return currentLeaderboardTab === "time" ? entry.timeRecord : entry.memoryRecord;
+  });
+
+  // Sort logic using totalRuntimeMs
+  validEntries.sort((a, b) => {
+    if (currentLeaderboardTab === "time") {
+      if (a.timeRecord.complexityRank !== b.timeRecord.complexityRank) {
+        return a.timeRecord.complexityRank - b.timeRecord.complexityRank;
+      }
+      return a.timeRecord.totalRuntimeMs - b.timeRecord.totalRuntimeMs; // 👈 Sort by total runtime
+    } else {
+      if (a.memoryRecord.complexityRank !== b.memoryRecord.complexityRank) {
+        return a.memoryRecord.complexityRank - b.memoryRecord.complexityRank;
+      }
+      return a.memoryRecord.peakMemoryMb - b.memoryRecord.peakMemoryMb;
+    }
+  });
+
+  validEntries.forEach((entry, index) => {
+    const tr = document.createElement("tr");
+    
+    if (entry.username === currentLeaderboardUsername) {
+      tr.classList.add("highlight-user");
+    }
+
+    const isUser = entry.username === currentLeaderboardUsername ? `<span class="you-tag">(You)</span>` : "";
+    
+    let metricBadge, secondaryText;
+    if (currentLeaderboardTab === "time") {
+      metricBadge = `<span class="badge">${entry.timeRecord.complexity}</span>`;
+      secondaryText = `${entry.timeRecord.totalRuntimeMs.toFixed(2)} ms`; // 👈 Render total runtime
+    } else {
+      metricBadge = `<span class="badge">${entry.memoryRecord.complexity}</span>`;
+      secondaryText = `${entry.memoryRecord.peakMemoryMb.toFixed(2)} MB`;
+    }
+
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${entry.username} ${isUser}</td>
+      <td>${metricBadge}</td>
+      <td>${secondaryText}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
