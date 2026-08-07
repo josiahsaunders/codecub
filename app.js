@@ -82,7 +82,7 @@ async function initApp() {
 
   // Event Listeners
   runBtn.addEventListener("click", () => executeSuite(false));
-  submitBtn.addEventListener("click", () => executeSuite(true));
+  submitBtn.addEventListener("click", handleSubmit);
   resetBtn.addEventListener("click", resetCodeToStarter);
   saveBtn.addEventListener("click", saveCodeToFile);
   loadBtn.addEventListener("click", () => fileInput.click());
@@ -430,13 +430,13 @@ async function executeSuite(isSubmission = false) {
     // Clear estimator history for fresh submission run
     await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
 
-    const results = [];
+    const testResultsList = [];
     let passedCount = 0;
     let totalCpuMs = 0;
     let maxPeakMb = 0;
     let stoppedEarly = false;
     let failedTestId = null;
-    let latestComplexity = "N/A";
+    let latestComplexity = null;
 
     for (let i = 0; i < testsToRun.length; i++) {
       const test = testsToRun[i];
@@ -444,7 +444,7 @@ async function executeSuite(isSubmission = false) {
       const res = JSON.parse(rawResult);
       res.id = test.id;
 
-      results.push(res);
+      testResultsList.push(res);
 
       if (typeof res.peak_mb === "number") {
         maxPeakMb = Math.max(maxPeakMb, res.peak_mb);
@@ -460,6 +460,12 @@ async function executeSuite(isSubmission = false) {
           latestComplexity = res.complexity;
         }
 
+        if (!res.passed && isSubmission) {
+          stoppedEarly = true;
+          failedTestId = test.id;
+          break;
+        }
+
       } else {
         if (isSubmission) {
           stoppedEarly = true;
@@ -468,6 +474,8 @@ async function executeSuite(isSubmission = false) {
         }
       }
     }
+
+    const allPassed = passedCount === testsToRun.length;
 
     // Japanese Console Output Header
     const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
@@ -498,7 +506,7 @@ async function executeSuite(isSubmission = false) {
 
     outputText += `----------------------------------------\n\n`;
 
-    results.forEach((r) => {
+    testResultsList.forEach((r) => {
       if (r.status === "SUCCESS") {
         const icon = r.passed ? "✅" : "❌";
         const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
@@ -518,10 +526,20 @@ async function executeSuite(isSubmission = false) {
 
     outputElem.innerText = outputText;
 
+    // Create structured payload
+    return{
+      allPassed: allPassed,
+      timeComplexity: latestComplexity ? latestComplexity.time?.complexity : "N/A",
+      spaceComplexity: latestComplexity ? latestComplexity.space?.complexity : "N/A",
+      totalRuntimeMs: totalCpuMs,
+      peakMemoryMb: maxPeakMb
+    }
+
   } catch (err) {
     outputElem.innerText = `❌ [システムエラー]\n${err}`;
+    return null;
   } finally {
-    if (evaluateTask && evaluateTask.destroy === "function") {
+    if (evaluateTask && typeof evaluateTask.destroy === "function") {
       evaluateTask.destroy();
     }
     runBtn.disabled = false;
@@ -572,29 +590,40 @@ function lockUsername() {
   }
 }
 
-// function handleSubmit() {
-//   let username = document.getElementById("nickNameInput").value.trim();
+async function handleSubmit() {
+  let username = document.getElementById("nicknameInput").value.trim();
 
-//   // Prompt if username isn't set
-//   if (!username) {
-//     const proceed = confirm(
-//       "ユーザー名が設定されていません。\nこのまま進むと「匿名」として記録されます。続行しますか？"
-//     );
-//     if (!proceed) return; // User cancelled to set their name
-//     username = "匿名";
-//   }
+  // Prompt if username isn't set
+  if (!username) {
+    const proceed = confirm(
+      "ユーザー名が設定されていません。\nこのまま進むと「匿名」として記録されます。続行しますか？"
+    );
+    if (!proceed) return; // User cancelled to set their name
+    username = "匿名";
+  }
 
-//   // 1. Run full test suite + complexity estimator
-//   const testResults = await executeSuite(true);
+  // 1. Run full test suite + complexity estimator
+  console.log("Starting submission execution...");
+  const results = await executeSuite(true);
+  console.log("Results from executeSuite:", results);
 
-//   // 2. Only proceed if 100% of tests pass
-//   if (!testResults.allPassed) {
-//     alert("すべてのテストをパスすると、リーダーボードに提出できます。");
-//     return;
-//   }
+  // 2. Only proceed if 100% of tests pass
+  if (!results || !results.allPassed) {
+    console.log("Submission halted: test suite was not 100% passed.");
+    return;
+  }
 
-//   // 3. Process personal best & update Firebase
-//   await processLeaderboardSubmission(username, testResults);
-// }
+  const currentTaskId = currentTaskData.meta.id;
+  await processLeaderboardSubmission(username, currentTaskId, results);
+
+  document.getElementById("leaderboardContainer").style.display = "block";
+  await loadAndRenderLeaderboard(currentTaskId, username);
+}
+
+async function loadAndRenderLeaderboard(taskId, username) {
+  currentLeaderboardUsername = username;
+  cachedLeaderboardEntries = await fetchTaskLeaderboard(taskId);
+  renderCondensedTable();
+}
 
 document.addEventListener("DOMContentLoaded", initApp);

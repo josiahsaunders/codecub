@@ -1,30 +1,33 @@
+// firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
   getFirestore, 
   collection, 
-  addDoc, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  getDocs, 
   query, 
-  where, 
-  orderBy, 
-  limit, 
-  onSnapshot 
+  where 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Replace with your Firebase Project configuration
+// 1. Firebase Project Configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBdWt9pbsEpwDwW2qxs-ljHp_copOYvYlI",
+  authDomain: "codecub-47802.firebaseapp.com",
+  projectId: "codecub-47802",
+  storageBucket: "codecub-47802.firebasestorage.app",
+  messagingSenderId: "187669573443",
+  appId: "1:187669573443:web:7444e0cbb1706d5d35c9f6",
+  measurementId: "G-ZM8N1K5CFW"
 };
 
+// 2. Initialize Firebase & Firestore
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+export const db = getFirestore(app);
 
-// Complexity numeric map for sorting
-const COMPLEXITY_WEIGHTS = {
+// 3. Rank Maps for Sorting (Lower number = better algorithm)
+const TIME_RANKS = {
   "O(1)": 1,
   "O(log N)": 2,
   "O(N)": 3,
@@ -33,52 +36,117 @@ const COMPLEXITY_WEIGHTS = {
   "O(2^N)": 6
 };
 
-/**
- * Submits a test result to the Firebase Leaderboard
- */
-export async function submitScore(taskId, username, complexityInfo, avgRuntimeMs) {
-  if (!username || username.trim() === "") {
-    username = "匿名"; // Fallback to "Anonymous" in Japanese
-  }
+const SPACE_RANKS = {
+  "O(1)": 1,
+  "O(log N)": 2,
+  "O(N)": 3
+};
 
-  const timeComplexity = complexityInfo.time_complexity || "O(N^2)";
-  const spaceComplexity = complexityInfo.space_complexity || "O(N)";
-  const complexityRank = COMPLEXITY_WEIGHTS[timeComplexity] || 99;
+/**
+ * Replaces `submitScore`: Checks for personal bests and updates Firestore.
+ */
+export async function processLeaderboardSubmission(username, taskId, newResult) {
+  if (!db) return;
+
+  const docId = `${taskId}_${username}`;
+  const userRef = doc(db, "leaderboard_submissions", docId);
 
   try {
-    await addDoc(collection(db, "leaderboards"), {
+    const snap = await getDoc(userRef);
+    const existingData = snap.exists() ? snap.data() : null;
+
+    const newTimeRank = TIME_RANKS[newResult.timeComplexity] || 99;
+    const newSpaceRank = SPACE_RANKS[newResult.spaceComplexity] || 99;
+
+    let updates = {
       taskId: taskId,
-      username: username.trim(),
-      timeComplexity: timeComplexity,
-      spaceComplexity: spaceComplexity,
-      complexityRank: complexityRank,
-      avgRuntimeMs: avgRuntimeMs,
-      timestamp: new Date()
-    });
-    console.log("Score successfully submitted to Firebase!");
-  } catch (error) {
-    console.error("Error submitting score to Firebase:", error);
+      username: username,
+      updatedAt: new Date()
+    };
+
+    // --- Time Record Check ---
+    let isBetterTime = false;
+    if (!existingData || !existingData.timeRecord) {
+      isBetterTime = true;
+    } else {
+      const old = existingData.timeRecord;
+      if (newTimeRank < old.complexityRank) {
+        isBetterTime = true;
+      } else if (
+        newTimeRank === old.complexityRank && 
+        newResult.totalRuntimeMs < old.totalRuntimeMs
+      ) {
+        isBetterTime = true; // Tiebreaker
+      }
+    }
+
+    if (isBetterTime) {
+      updates.timeRecord = {
+        complexity: newResult.timeComplexity,
+        complexityRank: newTimeRank,
+        totalRuntimeMs: newResult.totalRuntimeMs
+      };
+    } else if (existingData?.timeRecord) {
+      updates.timeRecord = existingData.timeRecord;
+    }
+
+    // --- Memory Record Check ---
+    let isBetterMemory = false;
+    if (!existingData || !existingData.memoryRecord) {
+      isBetterMemory = true;
+    } else {
+      const old = existingData.memoryRecord;
+      if (newSpaceRank < old.complexityRank) {
+        isBetterMemory = true;
+      } else if (
+        newSpaceRank === old.complexityRank && 
+        newResult.peakMemoryMb < old.peakMemoryMb
+      ) {
+        isBetterMemory = true; // Tiebreaker
+      }
+    }
+
+    if (isBetterMemory) {
+      updates.memoryRecord = {
+        complexity: newResult.spaceComplexity,
+        complexityRank: newSpaceRank,
+        peakMemoryMb: newResult.peakMemoryMb
+      };
+    } else if (existingData?.memoryRecord) {
+      updates.memoryRecord = existingData.memoryRecord;
+    }
+
+    // Write to Firestore if improved
+    if (isBetterTime || isBetterMemory || !snap.exists()) {
+      await setDoc(userRef, updates, { merge: true });
+    }
+  } catch (err) {
+    console.error("Error submitting to Firebase:", err);
   }
 }
 
 /**
- * Listens for real-time Leaderboard updates for a given task
+ * Replaces `listenToLeaderboard`: Fetches all entries for a task.
  */
-export function listenToLeaderboard(taskId, renderCallback) {
-  const q = query(
-    collection(db, "leaderboards"),
-    where("taskId", "==", taskId),
-    orderBy("complexityRank", "asc"),
-    orderBy("avgRuntimeMs", "asc"),
-    limit(10)
-  );
+export async function fetchTaskLeaderboard(taskId) {
+  if (!db) return [];
 
-  // Subscribe to real-time updates
-  return onSnapshot(q, (snapshot) => {
-    const scores = [];
-    snapshot.forEach((doc) => {
-      scores.push(doc.data());
+  try {
+    const q = query(
+      collection(db, "leaderboard_submissions"),
+      where("taskId", "==", taskId)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const entries = [];
+
+    querySnapshot.forEach((doc) => {
+      entries.push(doc.data());
     });
-    renderCallback(scores);
-  });
+
+    return entries;
+  } catch (err) {
+    console.error("Error fetching leaderboard entries:", err);
+    return [];
+  }
 }

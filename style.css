@@ -402,3 +402,102 @@ body {
 .history-status.failed {
     color: #ff5252;
 }
+
+/* Leaderboard Card Container */
+.leaderboard-card {
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+  color: #cdd6f4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Header & Tab Buttons */
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #313244;
+  padding-bottom: 12px;
+}
+
+.leaderboard-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f5e0dc;
+}
+
+.tab-group {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  background: #313244;
+  color: #a6adc8;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: #45475a;
+  color: #cdd6f4;
+}
+
+.tab-btn.active {
+  background: #89b4fa;
+  color: #11111b;
+  font-weight: bold;
+  border-color: #89b4fa;
+}
+
+/* Leaderboard Table */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.leaderboard-table th {
+  background: #181825;
+  color: #a6adc8;
+  padding: 10px;
+  font-weight: 600;
+  border-bottom: 2px solid #313244;
+}
+
+.leaderboard-table td {
+  padding: 10px;
+  border-bottom: 1px solid #313244;
+}
+
+/* Current User Highlight Row */
+.leaderboard-table tr.highlight-user {
+  background: rgba(137, 180, 250, 0.15);
+  border-left: 3px solid #89b4fa;
+}
+
+.you-tag {
+  font-size: 0.75rem;
+  color: #89b4fa;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+/* Complexity Badges */
+.badge {
+  background: #313244;
+  color: #a6e3a1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
