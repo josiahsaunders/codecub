@@ -24,6 +24,7 @@ const editorTabsElem = document.getElementById("editorTabs");
 const editorContainerElem = document.getElementById("editor-wrapper");
 const readonlyViewElem = document.getElementById("readonlyFileView");
 const readonlyCodeContentElem = document.getElementById("readonlyCodeContent");
+const nicknameSetBtn = document.getElementById("nicknameSetBtn");
 
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
@@ -76,13 +77,17 @@ async function initApp() {
     }
   });
 
+  // Load username
+  loadUsername();
+
   // Event Listeners
   runBtn.addEventListener("click", () => executeSuite(false));
   submitBtn.addEventListener("click", () => executeSuite(true));
   resetBtn.addEventListener("click", resetCodeToStarter);
   saveBtn.addEventListener("click", saveCodeToFile);
   loadBtn.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", loadCodeFromFile);
+  nicknameSetBtn.addEventListener("click", lockUsername);
+  fileInput.addEventListener("change", () => loadCodeFromFile);
   filterSelect.addEventListener("change", (e) => {
     const selectedTag = e.target.value;
     renderTaskList(selectedTag);
@@ -533,24 +538,63 @@ function formatMemory(peakMb) {
   return `${peakMb.toFixed(2)} MB`;
 }
 
+function loadUsername() {
+  const input = document.getElementById("nicknameInput");
+  nickName = localStorage.getItem("autograder_username");
+  
+  if (nickName) {
+    input.value = nickName;
+    input.setAttribute("readonly", "true");
+    nicknameSetBtn.textContent = "編集";
+    nicknameSetBtn.classList.add("is-locked");
+  }
+}
+
 function lockUsername() {
   const input = document.getElementById("nicknameInput");
-  const btn = document.getElementById("nicknameSetBtn");
+  const trimmedValue = input.value.trim();
 
-  if (input.value.trim() === "") return;
+  if (trimmedValue === "") return;
 
   if (input.hasAttribute("readonly")) {
     // Unlock for editing
     input.removeAttribute("readonly");
-    btn.textContent = "設定";
-    btn.classList.remove("is-locked");
+    nicknameSetBtn.textContent = "設定";
+    nicknameSetBtn.classList.remove("is-locked");
+    input.focus();
   } else {
     // Lock name
     input.setAttribute("readonly", "true");
-    btn.textContent = "編集";
-    btn.classList.add("is-locked");
+    nicknameSetBtn.textContent = "編集";
+    nicknameSetBtn.classList.add("is-locked");
+    nickName = trimmedValue;
     localStorage.setItem("autograder_username", input.value.trim());
   }
 }
+
+// function handleSubmit() {
+//   let username = document.getElementById("nickNameInput").value.trim();
+
+//   // Prompt if username isn't set
+//   if (!username) {
+//     const proceed = confirm(
+//       "ユーザー名が設定されていません。\nこのまま進むと「匿名」として記録されます。続行しますか？"
+//     );
+//     if (!proceed) return; // User cancelled to set their name
+//     username = "匿名";
+//   }
+
+//   // 1. Run full test suite + complexity estimator
+//   const testResults = await executeSuite(true);
+
+//   // 2. Only proceed if 100% of tests pass
+//   if (!testResults.allPassed) {
+//     alert("すべてのテストをパスすると、リーダーボードに提出できます。");
+//     return;
+//   }
+
+//   // 3. Process personal best & update Firebase
+//   await processLeaderboardSubmission(username, testResults);
+// }
 
 document.addEventListener("DOMContentLoaded", initApp);
