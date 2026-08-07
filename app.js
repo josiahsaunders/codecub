@@ -603,13 +603,10 @@ async function handleSubmit() {
   }
 
   // 1. Run full test suite + complexity estimator
-  console.log("Starting submission execution...");
   const results = await executeSuite(true);
-  console.log("Results from executeSuite:", results);
 
   // 2. Only proceed if 100% of tests pass
   if (!results || !results.allPassed) {
-    console.log("Submission halted: test suite was not 100% passed.");
     return;
   }
 
