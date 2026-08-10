@@ -14,12 +14,14 @@
         <script type="module">
             import { 
                 processLeaderboardSubmission, 
-                fetchTaskLeaderboard 
+                fetchTaskLeaderboard,
+                fetchUserSubmissionHistory 
             } from "./firebase-config.js";
 
             // Make them accessible globally for your UI button handlers
             window.processLeaderboardSubmission = processLeaderboardSubmission;
             window.fetchTaskLeaderboard = fetchTaskLeaderboard;
+            window.fetchUserSubmissionHistory = fetchUserSubmissionHistory;
         </script>
 
         <!-- Pyodide -->

@@ -25,34 +25,39 @@ const editorContainerElem = document.getElementById("editor-wrapper");
 const readonlyViewElem = document.getElementById("readonlyFileView");
 const readonlyCodeContentElem = document.getElementById("readonlyCodeContent");
 const nicknameSetBtn = document.getElementById("nicknameSetBtn");
+
+// --- History Modal Event Listeners ---
+const viewHistoryBtn = document.getElementById("viewHistoryBtn");
+const historyModal = document.getElementById("historyModal");
+const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+
+if (viewHistoryBtn) {
+  viewHistoryBtn.addEventListener("click", openSubmissionHistory);
+}
+
+if (closeHistoryBtn) {
+  closeHistoryBtn.addEventListener("click", () => {
+    historyModal.classList.add("hidden");
+  });
+}
+
 // --- Leaderboard State ---
 let currentLeaderboardTab = "time";
 let cachedLeaderboardEntries = [];
-let currentLeaderbaordUsername = "";
+let currentLeaderboardUsername = "";
 
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
   if (!md) return '';
 
   return md
-    // Headers (#, ##, ###)
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$2</h2>')
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    
-    // Bold: **text** -> <strong>text</strong>
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    
-    // Italics: *text* -> <em>text</em>  <-- THIS WAS MISSING!
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    
-    // Inline code: `code` -> <code>code</code>
     .replace(/`(.*?)`/g, '<code>$1</code>')
-    
-    // Unordered lists: - item -> <li>item</li>
     .replace(/^\- (.*$)/gim, '<li>$1</li>')
-    
-    // Line breaks / paragraphs
     .replace(/\n\n/g, '<br><br>');
 }
 
@@ -60,6 +65,15 @@ async function fetchText(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load ${url}`);
   return await res.text();
+}
+
+// Helper to wait for Firebase module scripts to attach to window
+async function waitForFirebase() {
+  let attempts = 0;
+  while (!window.fetchTaskLeaderboard && attempts < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    attempts++;
+  }
 }
 
 // --- 1. Initialization ---
@@ -91,27 +105,36 @@ async function initApp() {
   saveBtn.addEventListener("click", saveCodeToFile);
   loadBtn.addEventListener("click", () => fileInput.click());
   nicknameSetBtn.addEventListener("click", lockUsername);
-  fileInput.addEventListener("change", () => loadCodeFromFile);
+  fileInput.addEventListener("change", loadCodeFromFile);
+
   filterSelect.addEventListener("change", (e) => {
     const selectedTag = e.target.value;
     renderTaskList(selectedTag);
-    const username = document.getElementById("nicknameInput").value.trim() || "匿名";
-    loadAndRenderLeaderboard(selectedTaskId, username);
 
-    // Load the first available task in the filtered view
     if (problemSelect.value !== "") {
       const taskIdx = parseInt(problemSelect.value, 10);
-      loadTaskFolder(tasksCatalog[taskIdx]);
+      if (tasksCatalog[taskIdx]) {
+        loadTaskFolder(tasksCatalog[taskIdx]);
+      }
     }
   });
-  
-  problemSelect.addEventListener("change", async (e) => {
-    const selectedTask = tasksCatalog[e.target.value];
-    if (selectedTask) await loadTaskFolder(selectedTask);
-  });
+
+  problemSelect.addEventListener("change", (e) => onProblemSelectChange(e));
 
   // Load Catalog & Pyodide concurrently
   await Promise.all([initPyodide(), loadCatalog()]);
+}
+
+async function onProblemSelectChange(e) {
+  const selectedTask = tasksCatalog[e.target.value];
+  if (selectedTask) {
+    await loadTaskFolder(selectedTask);
+
+    const currentUsername = document.getElementById("nicknameInput").value.trim();
+    const taskId = (selectedTask.meta && selectedTask.meta.id) ? selectedTask.meta.id : selectedTask.id;
+
+    await loadAndRenderLeaderboard(taskId, currentUsername);
+  }
 }
 
 async function initPyodide() {
@@ -125,7 +148,7 @@ async function initPyodide() {
   }
 }
 
-// --- 2. Unpadded Parallel Test Loading (1.in ... N.in) ---
+// --- 2. Parallel Test Loading ---
 async function loadSharedPythonModules() {
   if (isSharedLoaded || !pyodide) return;
 
@@ -137,11 +160,9 @@ async function loadSharedPythonModules() {
 
     const estimatorCode = await response.text();
 
-    // Write to Pyodide virtual FS so standard python `import` works
     pyodide.FS.mkdirTree("/home/pyodide/shared");
     pyodide.FS.writeFile("/home/pyodide/shared/complexity_estimator.py", estimatorCode);
 
-    // Add path to sys.path
     await pyodide.runPythonAsync(`
       import sys
       if "/home/pyodide/shared" not in sys.path:
@@ -167,7 +188,6 @@ async function loadTestCases(folderPath, testCount) {
         const expectedOutput = await fetchText(`${folderPath}/tests/${i}.out`);
         return { id: String(i), input, expectedOutput };
       } catch (err) {
-        // Return null if file isn't found yet
         return null;
       }
     })();
@@ -184,10 +204,9 @@ async function loadCatalog() {
   try {
     const response = await fetch('tasks.json');
     if (!response.ok) throw new Error("Could not find tasks.json");
-    
+
     tasksCatalog = await response.json();
-    
-    // Get unique list of all tags
+
     tasksCatalog.forEach(task => {
       if (Array.isArray(task.tags)) {
         task.tags.forEach(tag => {
@@ -198,16 +217,20 @@ async function loadCatalog() {
       }
     });
     tagsList.sort();
-    
-    // Populate tag filter dropdown
+
     filterSelect.innerHTML = '<option value="ALL">すべてのタグ (All Tags)</option>' + tagsList.map(tag => `<option value="${tag}">${tag}</option>`).join('');
 
     renderTaskList("ALL");
 
-    // Load the first available task in the filtered view
     if (problemSelect.value !== "") {
       const taskIdx = parseInt(problemSelect.value, 10);
-      loadTaskFolder(tasksCatalog[taskIdx]);
+      await loadTaskFolder(tasksCatalog[taskIdx]);
+
+      // Check initial task leaderboard after Firebase loads
+      await waitForFirebase();
+      const currentUsername = document.getElementById("nicknameInput").value.trim();
+      const taskId = tasksCatalog[taskIdx].meta ? tasksCatalog[taskIdx].meta.id : tasksCatalog[taskIdx].id;
+      await loadAndRenderLeaderboard(taskId, currentUsername);
     }
   } catch (err) {
     descriptionElem.innerText = "Error loading tasks catalog.";
@@ -223,7 +246,6 @@ async function loadTaskFolder(taskMeta) {
   const folderPath = `tasks/${taskMeta.id}`;
 
   try {
-    // Parallel fetch for task resources
     const [descText, starterText, evalText] = await Promise.all([
       fetchText(`${folderPath}/description.md`),
       fetchText(`${folderPath}/starter.py`),
@@ -239,7 +261,6 @@ async function loadTaskFolder(taskMeta) {
 
     const supportFiles = await Promise.all(supportPromises);
 
-    // Fetch unpadded test files (1.in to N.in)
     const count = taskMeta.testCount;
     const testCases = await loadTestCases(folderPath, count);
 
@@ -252,13 +273,8 @@ async function loadTaskFolder(taskMeta) {
       tests: testCases
     };
 
-    // Render markdown description
     descriptionElem.innerHTML = parseMarkdown(currentTaskData.descriptionMarkdown);
-
-    // Restore saved user code or load default starter.py
     loadCodeForTask(currentTaskData);
-
-    // Reset active tab to main starter code and render tab bar
     switchTab("starter.py");
 
     if (pyodide) {
@@ -273,20 +289,17 @@ async function loadTaskFolder(taskMeta) {
 }
 
 function renderTaskList(selectedTag = "ALL") {
-  // Filter tasks based on the selected tag
   const matchingTasks = tasksCatalog.filter(task => {
     if (selectedTag === "ALL") return true;
     return task.tags && task.tags.includes(selectedTag);
   });
 
-  // Re-populate problemSelect options storing original index or task id
   if (matchingTasks.length === 0) {
     problemSelect.innerHTML = '<option value="">該当する課題がありません</option>';
     return;
   }
 
   problemSelect.innerHTML = matchingTasks.map(task => {
-    // Find the original index in tasksCatalog
     const originalIdx = tasksCatalog.findIndex(t => t.id === task.id);
     return `<option value="${originalIdx}">${task.title}</option>`;
   }).join('');
@@ -297,14 +310,12 @@ function renderEditorTabs() {
 
   editorTabsElem.innerHTML = "";
 
-  // Main editable tab
   const mainTab = document.createElement("button");
   mainTab.className = `editor-tab ${activeTabFilename === "starter.py" ? "active" : ""}`;
   mainTab.innerText = "starter.py";
   mainTab.onclick = () => switchTab("starter.py");
   editorTabsElem.appendChild(mainTab);
 
-  // Support file tabs (Read-only)
   if (currentTaskData.supportFiles && currentTaskData.supportFiles.length > 0) {
     currentTaskData.supportFiles.forEach(file => {
       const tab = document.createElement("button");
@@ -314,7 +325,7 @@ function renderEditorTabs() {
       tab.title = "Read-Only Reference File";
       tab.onclick = () => switchTab(file.filename);
       editorTabsElem.appendChild(tab);
-    })
+    });
   }
 }
 
@@ -322,12 +333,10 @@ function switchTab(filename) {
   activeTabFilename = filename;
 
   if (filename === "starter.py") {
-    // Show CodeMirror Editor
     editorContainerElem.classList.remove("hidden");
     readonlyViewElem.classList.add("hidden");
     if (editor) editor.refresh();
   } else {
-    // Find support file content
     const supportFile = currentTaskData.supportFiles.find(f => f.filename === filename);
     if (supportFile) {
       readonlyCodeContentElem.innerText = supportFile.content;
@@ -336,7 +345,6 @@ function switchTab(filename) {
     }
   }
 
-  // Re-render tab states
   renderEditorTabs();
 }
 
@@ -403,7 +411,7 @@ function loadCodeFromFile(event) {
   event.target.value = "";
 }
 
-// --- 5. Execution Engine (Run Examples vs. Submit) ---
+// --- 5. Execution Engine ---
 async function executeSuite(isSubmission = false) {
   if (!pyodide || !currentTaskData) return;
 
@@ -413,8 +421,7 @@ async function executeSuite(isSubmission = false) {
   outputElem.innerText = isSubmission 
     ? "採点中... 全テストケースを実行しています\n" 
     : "サンプルテストを実行中...\n";
-  
-  // Sync support files to Pyodide's virtual filesystem
+
   if (currentTaskData.supportFiles && currentTaskData.supportFiles.length > 0) {
     currentTaskData.supportFiles.forEach(file => {
       pyodide.FS.writeFile(file.filename, file.content, { encoding: 'utf8' });
@@ -433,7 +440,6 @@ async function executeSuite(isSubmission = false) {
     await pyodide.runPythonAsync(currentTaskData.evaluatorPy);
     evaluateTask = pyodide.globals.get("evaluate_task");
 
-    // Clear estimator history for fresh submission run
     await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
 
     const testResultsList = [];
@@ -483,10 +489,9 @@ async function executeSuite(isSubmission = false) {
 
     const allPassed = passedCount === testsToRun.length;
 
-    // Japanese Console Output Header
     const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
     let outputText = `=== ${modeLabel} ===\n`;
-    
+
     if (stoppedEarly) {
       outputText += `❌ 採点中断: テストケース ${failedTestId} で失敗しました。\n`;
       outputText += `パスしたケース数: ${passedCount} / ${testsToRun.length}\n`;
@@ -501,7 +506,7 @@ async function executeSuite(isSubmission = false) {
       if (latestComplexity) {
         const timeComp = latestComplexity.time?.complexity || "N/A";
         const spaceComp = latestComplexity.space?.complexity || "N/A";
-        
+
         outputText += `(Estimated Time Complexity): ${timeComp}\n`;
         outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
       } else {
@@ -532,14 +537,13 @@ async function executeSuite(isSubmission = false) {
 
     outputElem.innerText = outputText;
 
-    // Create structured payload
-    return{
+    return {
       allPassed: allPassed,
       timeComplexity: latestComplexity ? latestComplexity.time?.complexity : "N/A",
       spaceComplexity: latestComplexity ? latestComplexity.space?.complexity : "N/A",
       totalRuntimeMs: totalCpuMs,
       peakMemoryMb: maxPeakMb
-    }
+    };
 
   } catch (err) {
     outputElem.innerText = `❌ [システムエラー]\n${err}`;
@@ -564,10 +568,10 @@ function formatMemory(peakMb) {
 
 function loadUsername() {
   const input = document.getElementById("nicknameInput");
-  nickName = localStorage.getItem("autograder_username");
-  
-  if (nickName) {
-    input.value = nickName;
+  const storedName = localStorage.getItem("autograder_username");
+
+  if (storedName) {
+    input.value = storedName;
     input.setAttribute("readonly", "true");
     nicknameSetBtn.textContent = "編集";
     nicknameSetBtn.classList.add("is-locked");
@@ -581,85 +585,96 @@ function lockUsername() {
   if (trimmedValue === "") return;
 
   if (input.hasAttribute("readonly")) {
-    // Unlock for editing
     input.removeAttribute("readonly");
     nicknameSetBtn.textContent = "設定";
     nicknameSetBtn.classList.remove("is-locked");
     input.focus();
   } else {
-    // Lock name
     input.setAttribute("readonly", "true");
     nicknameSetBtn.textContent = "編集";
     nicknameSetBtn.classList.add("is-locked");
-    nickName = trimmedValue;
-    localStorage.setItem("autograder_username", input.value.trim());
+    localStorage.setItem("autograder_username", trimmedValue);
   }
 }
 
 async function handleSubmit() {
   let username = document.getElementById("nicknameInput").value.trim();
 
-  // Prompt if username isn't set
   if (!username) {
     const proceed = confirm(
       "ユーザー名が設定されていません。\nこのまま進むと「匿名」として記録されます。続行しますか？"
     );
-    if (!proceed) return; // User cancelled to set their name
+    if (!proceed) return;
     username = "匿名";
   }
 
-  // 1. Run full test suite + complexity estimator
   const results = await executeSuite(true);
 
-  // 2. Only proceed if 100% of tests pass
   if (!results || !results.allPassed) {
     return;
   }
 
   const currentTaskId = currentTaskData.meta.id;
-  await processLeaderboardSubmission(username, currentTaskId, results);
-  await loadAndRenderLeaderboard(currentTaskId, username);
 
-  document.getElementById("leaderboardContainer").style.display = "block";
+  if (window.processLeaderboardSubmission) {
+    await window.processLeaderboardSubmission(username, currentTaskId, results);
+  }
+
   await loadAndRenderLeaderboard(currentTaskId, username);
 }
 
-async function loadAndRenderLeaderboard(taskId, username) {
-  currentLeaderboardUsername = username;
-  cachedLeaderboardEntries = await fetchTaskLeaderboard(taskId);
-  renderCondensedTable();
-}
-
+// --- Leaderboard & History Modal Logic ---
 async function loadAndRenderLeaderboard(taskId, username) {
   const lbContainer = document.getElementById("leaderboardContainer");
+  const historyBtn = document.getElementById("viewHistoryBtn");
 
   if (!taskId) {
-    lbContainer.classList.add("hidden");
+    if (lbContainer) lbContainer.classList.add("hidden");
+    if (historyBtn) historyBtn.style.display = "none";
     return;
   }
 
-  currentLeaderboardUsername = username || "";
+  const activeUsername = (
+    username || 
+    document.getElementById("nicknameInput").value || 
+    localStorage.getItem("autograder_username") || 
+    ""
+  ).trim();
+
+  currentLeaderboardUsername = activeUsername;
 
   if (window.fetchTaskLeaderboard) {
     cachedLeaderboardEntries = await window.fetchTaskLeaderboard(taskId);
-    lbContainer.classList.remove("hidden");
-    renderCondensedTable();
+
+    const userEntry = cachedLeaderboardEntries.find(
+      (entry) => entry.username.trim().toLowerCase() === activeUsername.toLowerCase()
+    );
+
+    if (userEntry) {
+      if (lbContainer) lbContainer.classList.remove("hidden");
+      if (historyBtn) historyBtn.style.display = "block";
+      renderCondensedTable();
+    } else {
+      if (lbContainer) lbContainer.classList.add("hidden");
+      if (historyBtn) historyBtn.style.display = "none";
+    }
   }
 }
 
 function switchLeaderboardTab(tab) {
   currentLeaderboardTab = tab;
 
-  // Update active button styling
   document.getElementById("btnTabTime").classList.toggle("active", tab === "time");
   document.getElementById("btnTabMemory").classList.toggle("active", tab === "memory");
 
-  // Update table headers
   document.getElementById("lbMetricCol").textContent = tab === "time" ? "計算量 (時間)" : "空間計算量";
   document.getElementById("lbSecondaryCol").textContent = tab === "time" ? "合計時間 (ms)" : "ピーク (MB)";
 
   renderCondensedTable();
 }
+
+// Make available globally for HTML inline onclick attributes
+window.switchLeaderboardTab = switchLeaderboardTab;
 
 function renderCondensedTable() {
   const tbody = document.getElementById("leaderboardBody");
@@ -674,13 +689,12 @@ function renderCondensedTable() {
     return currentLeaderboardTab === "time" ? entry.timeRecord : entry.memoryRecord;
   });
 
-  // Sort logic using totalRuntimeMs
   validEntries.sort((a, b) => {
     if (currentLeaderboardTab === "time") {
       if (a.timeRecord.complexityRank !== b.timeRecord.complexityRank) {
         return a.timeRecord.complexityRank - b.timeRecord.complexityRank;
       }
-      return a.timeRecord.totalRuntimeMs - b.timeRecord.totalRuntimeMs; // 👈 Sort by total runtime
+      return a.timeRecord.totalRuntimeMs - b.timeRecord.totalRuntimeMs;
     } else {
       if (a.memoryRecord.complexityRank !== b.memoryRecord.complexityRank) {
         return a.memoryRecord.complexityRank - b.memoryRecord.complexityRank;
@@ -691,17 +705,17 @@ function renderCondensedTable() {
 
   validEntries.forEach((entry, index) => {
     const tr = document.createElement("tr");
-    
-    if (entry.username === currentLeaderboardUsername) {
+
+    if (entry.username.trim().toLowerCase() === currentLeaderboardUsername.toLowerCase()) {
       tr.classList.add("highlight-user");
     }
 
-    const isUser = entry.username === currentLeaderboardUsername ? `<span class="you-tag">(You)</span>` : "";
-    
+    const isUser = entry.username.trim().toLowerCase() === currentLeaderboardUsername.toLowerCase() ? `<span class="you-tag">(You)</span>` : "";
+
     let metricBadge, secondaryText;
     if (currentLeaderboardTab === "time") {
       metricBadge = `<span class="badge">${entry.timeRecord.complexity}</span>`;
-      secondaryText = `${entry.timeRecord.totalRuntimeMs.toFixed(2)} ms`; // 👈 Render total runtime
+      secondaryText = `${entry.timeRecord.totalRuntimeMs.toFixed(2)} ms`;
     } else {
       metricBadge = `<span class="badge">${entry.memoryRecord.complexity}</span>`;
       secondaryText = `${entry.memoryRecord.peakMemoryMb.toFixed(2)} MB`;
@@ -715,6 +729,53 @@ function renderCondensedTable() {
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function openSubmissionHistory() {
+  const container = document.getElementById("historyListContainer");
+  const activeUsername = (
+    document.getElementById("nicknameInput").value || 
+    localStorage.getItem("autograder_username") || 
+    ""
+  ).trim();
+
+  if (!container || !currentTaskData) return;
+  container.innerHTML = `<p style="color: #a0a0b0; text-align: center;">読み込み中...</p>`;
+
+  historyModal.classList.remove("hidden");
+
+  const taskId = currentTaskData.meta ? currentTaskData.meta.id : currentTaskData.id;
+
+  if (window.fetchUserSubmissionHistory) {
+    const historyList = await window.fetchUserSubmissionHistory(taskId, activeUsername);
+
+    if (historyList.length === 0) {
+      container.innerHTML = `<p style="color: #a0a0b0; text-align: center;">提出履歴が見つかりませんでした。</p>`;
+      return;
+    }
+
+    let html = "";
+    historyList.forEach((attempt, index) => {
+      const dateStr = attempt.timestamp 
+        ? new Date(attempt.timestamp.seconds * 1000).toLocaleString("ja-JP")
+        : "日時不明";
+
+      html += `
+        <div class="history-item" style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <div class="history-item-header">
+            <span class="history-status passed">試行 #${historyList.length - index}</span>
+            <span style="font-size: 0.8rem; color: #a0a0b0;">${dateStr}</span>
+          </div>
+          <div style="margin-top: 6px; font-size: 0.85rem; line-height: 1.5;">
+            <p>⚡ 時間計算量: <span class="badge">${attempt.timeComplexity || "N/A"}</span> (${attempt.totalRuntimeMs ? attempt.totalRuntimeMs.toFixed(2) : "0"} ms)</p>
+            <p>💾 空間計算量: <span class="badge">${attempt.spaceComplexity || "N/A"}</span> (${attempt.peakMemoryMb ? attempt.peakMemoryMb.toFixed(2) : "0"} MB)</p>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", initApp);

@@ -6,9 +6,11 @@ import {
   doc, 
   getDoc, 
   setDoc, 
-  getDocs, 
+  getDocs,
+  addDoc, 
   query, 
-  where 
+  where,
+  orderBy 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // 1. Firebase Project Configuration
@@ -42,16 +44,25 @@ const SPACE_RANKS = {
   "O(N)": 3
 };
 
-/**
- * Replaces `submitScore`: Checks for personal bests and updates Firestore.
- */
 export async function processLeaderboardSubmission(username, taskId, newResult) {
   if (!db) return;
 
-  const docId = `${taskId}_${username}`;
-  const userRef = doc(db, "leaderboard_submissions", docId);
-
   try {
+    // 1. ALWAYS write an entry to the complete history log
+    await addDoc(collection(db, "submission_history"), {
+      taskId: taskId,
+      username: username,
+      timeComplexity: newResult.timeComplexity,
+      spaceComplexity: newResult.spaceComplexity,
+      totalRuntimeMs: newResult.totalRuntimeMs,
+      peakMemoryMb: newResult.peakMemoryMb,
+      allPassed: newResult.allPassed,
+      timestamp: new Date()
+    });
+
+    // 2. ALSO update the Personal Best in leaderboard_submissions (existing logic)
+    const docId = `${taskId}_${username}`;
+    const userRef = doc(db, "leaderboard_submissions", docId);
     const snap = await getDoc(userRef);
     const existingData = snap.exists() ? snap.data() : null;
 
@@ -65,19 +76,11 @@ export async function processLeaderboardSubmission(username, taskId, newResult) 
     };
 
     // --- Time Record Check ---
-    let isBetterTime = false;
-    if (!existingData || !existingData.timeRecord) {
-      isBetterTime = true;
-    } else {
+    let isBetterTime = !existingData || !existingData.timeRecord;
+    if (existingData?.timeRecord) {
       const old = existingData.timeRecord;
-      if (newTimeRank < old.complexityRank) {
-        isBetterTime = true;
-      } else if (
-        newTimeRank === old.complexityRank && 
-        newResult.totalRuntimeMs < old.totalRuntimeMs
-      ) {
-        isBetterTime = true; // Tiebreaker
-      }
+      if (newTimeRank < old.complexityRank) isBetterTime = true;
+      else if (newTimeRank === old.complexityRank && newResult.totalRuntimeMs < old.totalRuntimeMs) isBetterTime = true;
     }
 
     if (isBetterTime) {
@@ -91,19 +94,11 @@ export async function processLeaderboardSubmission(username, taskId, newResult) 
     }
 
     // --- Memory Record Check ---
-    let isBetterMemory = false;
-    if (!existingData || !existingData.memoryRecord) {
-      isBetterMemory = true;
-    } else {
+    let isBetterMemory = !existingData || !existingData.memoryRecord;
+    if (existingData?.memoryRecord) {
       const old = existingData.memoryRecord;
-      if (newSpaceRank < old.complexityRank) {
-        isBetterMemory = true;
-      } else if (
-        newSpaceRank === old.complexityRank && 
-        newResult.peakMemoryMb < old.peakMemoryMb
-      ) {
-        isBetterMemory = true; // Tiebreaker
-      }
+      if (newSpaceRank < old.complexityRank) isBetterMemory = true;
+      else if (newSpaceRank === old.complexityRank && newResult.peakMemoryMb < old.peakMemoryMb) isBetterMemory = true;
     }
 
     if (isBetterMemory) {
@@ -116,7 +111,6 @@ export async function processLeaderboardSubmission(username, taskId, newResult) 
       updates.memoryRecord = existingData.memoryRecord;
     }
 
-    // Write to Firestore if improved
     if (isBetterTime || isBetterMemory || !snap.exists()) {
       await setDoc(userRef, updates, { merge: true });
     }
@@ -147,6 +141,34 @@ export async function fetchTaskLeaderboard(taskId) {
     return entries;
   } catch (err) {
     console.error("Error fetching leaderboard entries:", err);
+    return [];
+  }
+}
+
+/**
+ * Fetches the full submission history list for a specific user and task
+ */
+export async function fetchUserSubmissionHistory(taskId, username) {
+  if (!db) return [];
+
+  try {
+    const q = query(
+      collection(db, "submission_history"),
+      where("taskId", "==", taskId),
+      where("username", "==", username)
+    );
+
+    const snapshot = await getDocs(q);
+    const history = [];
+
+    snapshot.forEach((doc) => {
+      history.push(doc.data());
+    });
+
+    // Sort descending by timestamp (newest attempt first)
+    return history.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+  } catch (err) {
+    console.error("Error fetching submission history:", err);
     return [];
   }
 }
