@@ -578,22 +578,50 @@ function loadUsername() {
   }
 }
 
-function lockUsername() {
+async function lockUsername() {
   const input = document.getElementById("nicknameInput");
   const trimmedValue = input.value.trim();
 
-  if (trimmedValue === "") return;
+  // Helper to safely retrieve current task ID
+  const getCurrentTaskId = () => {
+    if (currentTaskData && currentTaskData.meta) {
+      return currentTaskData.meta.id;
+    }
+    if (problemSelect && problemSelect.value !== "") {
+      const taskIdx = parseInt(problemSelect.value, 10);
+      if (tasksCatalog[taskIdx]) {
+        return tasksCatalog[taskIdx].meta ? tasksCatalog[taskIdx].meta.id : tasksCatalog[taskIdx].id;
+      }
+    }
+    return null;
+  };
+
+  const taskId = getCurrentTaskId();
 
   if (input.hasAttribute("readonly")) {
+    // --- UNLOCKING FOR EDITING ---
     input.removeAttribute("readonly");
     nicknameSetBtn.textContent = "設定";
     nicknameSetBtn.classList.remove("is-locked");
     input.focus();
+
+    // Re-render leaderboard for empty/in-progress name (will hide if no match)
+    if (taskId) {
+      await loadAndRenderLeaderboard(taskId, "");
+    }
   } else {
+    // --- LOCKING NEW NICKNAME ---
+    if (trimmedValue === "") return;
+
     input.setAttribute("readonly", "true");
     nicknameSetBtn.textContent = "編集";
     nicknameSetBtn.classList.add("is-locked");
     localStorage.setItem("autograder_username", trimmedValue);
+
+    // Re-check Firebase and reveal Leaderboard/History if records exist for this new nickname
+    if (taskId) {
+      await loadAndRenderLeaderboard(taskId, trimmedValue);
+    }
   }
 }
 
