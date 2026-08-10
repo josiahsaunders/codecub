@@ -46,6 +46,144 @@ let currentLeaderboardTab = "time";
 let cachedLeaderboardEntries = [];
 let currentLeaderboardUsername = "";
 
+// --- Web Worker Setup for Timeout Management ---
+let judgeWorker = null;
+let currentTaskTimeout = null;
+
+// Inline Worker Code
+const workerCode = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js");
+
+let pyodide = null;
+let isSharedLoaded = false;
+
+async function initWorker() {
+    try {
+        pyodide = await loadPyodide({
+            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/"
+        });
+        postMessage({ type: "INIT_COMPLETE" });
+    } catch (err) {
+        postMessage({ type: "INIT_ERROR", error: String(err) });
+    }
+}
+
+self.onmessage = async function(e) {
+    const { action, userCode, evaluatorPy, testsToRun, sharedEstimatorCode } = e.data;
+
+    if (action === "INIT") {
+        await initWorker();
+        return;
+    }
+
+    if (action === "RUN_TESTS") {
+        try {
+            if (!isSharedLoaded && sharedEstimatorCode) {
+                pyodide.FS.mkdirTree("/home/pyodide/shared");
+                pyodide.FS.writeFile("/home/pyodide/shared/complexity_estimator.py", sharedEstimatorCode);
+                await pyodide.runPythonAsync(\`
+                    import sys
+                    if "/home/pyodide/shared" not in sys.path:
+                        sys.path.append("/home/pyodide/shared")
+                \`);
+                isSharedLoaded = true;
+            }
+
+            await pyodide.runPythonAsync(evaluatorPy);
+            const evaluateTask = pyodide.globals.get("evaluate_task");
+            await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
+
+            const testResultsList = [];
+            let passedCount = 0;
+            let totalCpuMs = 0;
+            let maxPeakMb = 0;
+            let stoppedEarly = false;
+            let failedTestId = null;
+            let latestComplexity = null;
+
+            for (let i = 0; i < testsToRun.length; i++) {
+                const test = testsToRun[i];
+                const rawResult = evaluateTask(userCode, test.input, test.expectedOutput, i);
+                const res = JSON.parse(rawResult);
+                res.id = test.id;
+
+                testResultsList.push(res);
+
+                if (typeof res.peak_mb === "number") {
+                    maxPeakMb = Math.max(maxPeakMb, res.peak_mb);
+                }
+
+                if (res.status === "SUCCESS") {
+                    totalCpuMs += res.runtime_ms;
+                    if (res.passed) passedCount++;
+                    if (res.complexity) latestComplexity = res.complexity;
+                    if (!res.passed) {
+                        stoppedEarly = true;
+                        failedTestId = test.id;
+                        break;
+                    }
+                } else {
+                    stoppedEarly = true;
+                    failedTestId = test.id;
+                    break;
+                }
+            }
+
+            if (evaluateTask && typeof evaluateTask.destroy === "function") {
+                evaluateTask.destroy();
+            }
+
+            postMessage({
+                type: "TEST_RESULTS",
+                payload: {
+                    testResultsList,
+                    passedCount,
+                    totalCpuMs,
+                    maxPeakMb,
+                    stoppedEarly,
+                    failedTestId,
+                    latestComplexity,
+                    allPassed: passedCount === testsToRun.length
+                }
+            });
+        } catch (err) {
+            postMessage({ type: "ERROR", error: String(err) });
+        }
+    }
+};
+`;
+
+/**
+ * Initializes or restarts the Web Worker
+ */
+function spawnJudgeWorker() {
+    if (judgeWorker) {
+        judgeWorker.terminate();
+    }
+
+    const blob = new Blob([workerCode], { type: "application/javascript" });
+    judgeWorker = new Worker(URL.createObjectURL(blob));
+
+    return new Promise((resolve, reject) => {
+        judgeWorker.onmessage = (e) => {
+            if (e.data.type === "INIT_COMPLETE") {
+                console.log("✅ Pyodide Worker initialized successfully.");
+                resolve();
+            } else if (e.data.type === "INIT_ERROR") {
+                console.error("❌ Worker Init Error:", e.data.error);
+                reject(new Error(e.data.error));
+            }
+        };
+
+        judgeWorker.onerror = (err) => {
+            console.error("❌ Worker Error:", err);
+            reject(err);
+        };
+
+        judgeWorker.postMessage({ action: "INIT" });
+    });
+}
+
 // Helper: Simple Markdown Parser
 function parseMarkdown(md) {
   if (!md) return '';
@@ -139,12 +277,18 @@ async function onProblemSelectChange(e) {
 
 async function initPyodide() {
   try {
-    outputElem.innerText = "Loading Pyodide environment...";
-    pyodide = await loadPyodide();
-    await loadSharedPythonModules();
+    outputElem.innerText = "Loading Pyodide runtime in Web Worker...";
+    await spawnJudgeWorker();
+
+    // Enable buttons if a task is already loaded
+    if (currentTaskData) {
+      runBtn.disabled = false;
+      submitBtn.disabled = false;
+    }
+
     outputElem.innerText = "Ready! Select a task to begin.";
   } catch (err) {
-    outputElem.innerText = `❌ Failed to initialize Python runtime: ${err}`;
+    outputElem.innerText = `❌ Failed to initialize Python runtime: ${err.message || err}`;
   }
 }
 
@@ -413,7 +557,7 @@ function loadCodeFromFile(event) {
 
 // --- 5. Execution Engine ---
 async function executeSuite(isSubmission = false) {
-  if (!pyodide || !currentTaskData) return;
+  if (!judgeWorker || !currentTaskData) return null;
 
   runBtn.disabled = true;
   submitBtn.disabled = true;
@@ -422,139 +566,125 @@ async function executeSuite(isSubmission = false) {
     ? "採点中... 全テストケースを実行しています\n" 
     : "サンプルテストを実行中...\n";
 
-  if (currentTaskData.supportFiles && currentTaskData.supportFiles.length > 0) {
-    currentTaskData.supportFiles.forEach(file => {
-      pyodide.FS.writeFile(file.filename, file.content, { encoding: 'utf8' });
-    });
-  }
-
   const userCode = editor ? editor.getValue() : "";
-  let evaluateTask = null;
+  const EXAMPLE_COUNT = currentTaskData.meta.exampleCount || 3;
+  const testsToRun = isSubmission
+    ? currentTaskData.tests
+    : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
 
+  // Fetch shared estimator code to send to worker
+  let sharedEstimatorCode = "";
   try {
-    const EXAMPLE_COUNT = currentTaskData.meta.exampleCount || 3;
-    const testsToRun = isSubmission
-      ? currentTaskData.tests
-      : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
+    const res = await fetch("tasks/complexity_estimator.py");
+    if (res.ok) sharedEstimatorCode = await res.text();
+  } catch (e) {}
 
-    await pyodide.runPythonAsync(currentTaskData.evaluatorPy);
-    evaluateTask = pyodide.globals.get("evaluate_task");
+  const TIMEOUT_MS = 10000; // 10-second execution limit
 
-    await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
+  return new Promise((resolve) => {
+    let isHandled = false;
 
-    const testResultsList = [];
-    let passedCount = 0;
-    let totalCpuMs = 0;
-    let maxPeakMb = 0;
-    let stoppedEarly = false;
-    let failedTestId = null;
-    let latestComplexity = null;
+    // 1. Timeout Handler: Kills worker if execution exceeds TIMEOUT_MS
+    const timeoutId = setTimeout(() => {
+      if (isHandled) return;
+      isHandled = true;
 
-    for (let i = 0; i < testsToRun.length; i++) {
-      const test = testsToRun[i];
-      const rawResult = evaluateTask(userCode, test.input, test.expectedOutput, i);
-      const res = JSON.parse(rawResult);
-      res.id = test.id;
+      outputElem.innerText = `❌ [実行エラー / TLE]\n実行時間が制限 (${TIMEOUT_MS / 1000}秒) を超えました。(無限ループの可能性があります)`;
 
-      testResultsList.push(res);
+      // Terminate the frozen thread & respawn fresh worker for next run
+      spawnJudgeWorker().then(() => {
+        runBtn.disabled = false;
+        submitBtn.disabled = false;
+        resolve(null);
+      });
+    }, TIMEOUT_MS);
 
-      if (typeof res.peak_mb === "number") {
-        maxPeakMb = Math.max(maxPeakMb, res.peak_mb);
-      }
+    // 2. Message Listener from Worker
+    judgeWorker.onmessage = (e) => {
+      if (isHandled) return;
+      
+      if (e.data.type === "TEST_RESULTS") {
+        clearTimeout(timeoutId);
+        isHandled = true;
 
-      if (res.status === "SUCCESS") {
-        totalCpuMs += res.runtime_ms;
-        if (res.passed) {
-          passedCount++;
+        const resData = e.data.payload;
+
+        // Render console output in UI
+        const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
+        let outputText = `=== ${modeLabel} ===\n`;
+
+        if (resData.stoppedEarly) {
+          outputText += `❌ 採点中断: テストケース ${resData.failedTestId} で失敗しました。\n`;
+          outputText += `パスしたケース数: ${resData.passedCount} / ${testsToRun.length}\n`;
+        } else {
+          outputText += `正解数 (Passed): ${resData.passedCount} / ${testsToRun.length} ケース\n`;
         }
 
-        if (res.complexity) {
-          latestComplexity = res.complexity;
-        }
+        outputText += `合計 CPU 実行時間: ${resData.totalCpuMs.toFixed(3)} ms\n`;
+        outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(resData.maxPeakMb)}\n`;
 
-        if (!res.passed && isSubmission) {
-          stoppedEarly = true;
-          failedTestId = test.id;
-          break;
-        }
-
-      } else {
         if (isSubmission) {
-          stoppedEarly = true;
-          failedTestId = test.id;
-          break;
+          if (resData.latestComplexity) {
+            outputText += `(Estimated Time Complexity): ${resData.latestComplexity.time?.complexity || "N/A"}\n`;
+            outputText += `(Estimated Space Complexity): ${resData.latestComplexity.space?.complexity || "N/A"}\n`;
+          } else {
+            outputText += `(Estimated Time Complexity): N/A\n`;
+            outputText += `(Estimated Space Complexity): N/A\n`;
+          }
         }
-      }
-    }
 
-    const allPassed = passedCount === testsToRun.length;
+        outputText += `----------------------------------------\n\n`;
 
-    const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
-    let outputText = `=== ${modeLabel} ===\n`;
+        resData.testResultsList.forEach((r) => {
+          if (r.status === "SUCCESS") {
+            const icon = r.passed ? "✅" : "❌";
+            const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
+            outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
+            if (!r.passed) {
+              outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
+              outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;
+            }
+          } else {
+            outputText += `💥 テスト ${r.id}: 実行エラー (${r.status}) - ${r.error}\n`;
+          }
+        });
 
-    if (stoppedEarly) {
-      outputText += `❌ 採点中断: テストケース ${failedTestId} で失敗しました。\n`;
-      outputText += `パスしたケース数: ${passedCount} / ${testsToRun.length}\n`;
-    } else {
-      outputText += `正解数 (Passed): ${passedCount} / ${testsToRun.length} ケース\n`;
-    }
-
-    outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
-    outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(maxPeakMb)}\n`;
-
-    if (isSubmission) {
-      if (latestComplexity) {
-        const timeComp = latestComplexity.time?.complexity || "N/A";
-        const spaceComp = latestComplexity.space?.complexity || "N/A";
-
-        outputText += `(Estimated Time Complexity): ${timeComp}\n`;
-        outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
-      } else {
-        outputText += `(Estimated Time Complexity): N/A\n`;
-        outputText += `(Estimated Space Complexity): N/A\n`;
-      }
-    }
-
-    outputText += `----------------------------------------\n\n`;
-
-    testResultsList.forEach((r) => {
-      if (r.status === "SUCCESS") {
-        const icon = r.passed ? "✅" : "❌";
-        const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
-        outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
-        if (!r.passed) {
-          outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
-          outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;
+        if (resData.stoppedEarly) {
+          outputText += `\n⚠️ 以降のテストケースの実行はスキップされました。`;
         }
-      } else {
-        outputText += `💥 テスト ${r.id}: 実行エラー (${r.status}) - ${r.error}\n`;
+
+        outputElem.innerText = outputText;
+
+        runBtn.disabled = false;
+        submitBtn.disabled = false;
+
+        resolve({
+          allPassed: resData.allPassed,
+          timeComplexity: resData.latestComplexity ? resData.latestComplexity.time?.complexity : "N/A",
+          spaceComplexity: resData.latestComplexity ? resData.latestComplexity.space?.complexity : "N/A",
+          totalRuntimeMs: resData.totalCpuMs,
+          peakMemoryMb: resData.maxPeakMb
+        });
+
+      } else if (e.data.type === "ERROR") {
+        clearTimeout(timeoutId);
+        isHandled = true;
+        outputElem.innerText = `❌ [実行エラー]\n${e.data.error}`;
+        runBtn.disabled = false;
+        submitBtn.disabled = false;
+        resolve(null);
       }
-    });
-
-    if (stoppedEarly) {
-      outputText += `\n⚠️ 以降のテストケースの実行はスキップされました。`;
-    }
-
-    outputElem.innerText = outputText;
-
-    return {
-      allPassed: allPassed,
-      timeComplexity: latestComplexity ? latestComplexity.time?.complexity : "N/A",
-      spaceComplexity: latestComplexity ? latestComplexity.space?.complexity : "N/A",
-      totalRuntimeMs: totalCpuMs,
-      peakMemoryMb: maxPeakMb
     };
 
-  } catch (err) {
-    outputElem.innerText = `❌ [システムエラー]\n${err}`;
-    return null;
-  } finally {
-    if (evaluateTask && typeof evaluateTask.destroy === "function") {
-      evaluateTask.destroy();
-    }
-    runBtn.disabled = false;
-    submitBtn.disabled = false;
-  }
+    // 3. Post execution task to Worker
+    judgeWorker.postMessage({
+      action: "RUN_TESTS",
+      userCode,
+      evaluatorPy: currentTaskData.evaluatorPy,
+      testsToRun,
+      sharedEstimatorCode
+    });
+  });
 }
 
 function formatMemory(peakMb) {
