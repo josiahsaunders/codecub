@@ -69,7 +69,7 @@ async function initWorker() {
 }
 
 self.onmessage = async function(e) {
-    const { action, userCode, evaluatorPy, testsToRun, sharedEstimatorCode } = e.data;
+    const { action, userCode, evaluatorPy, testsToRun, sharedEstimatorCode, isSubmission } = e.data;
 
     if (action === "INIT") {
         await initWorker();
@@ -115,9 +115,15 @@ self.onmessage = async function(e) {
 
                 if (res.status === "SUCCESS") {
                     totalCpuMs += res.runtime_ms;
-                    if (res.passed) passedCount++;
-                    if (res.complexity) latestComplexity = res.complexity;
-                    if (!res.passed) {
+                    if (res.passed) {
+                        passedCount++;
+                    }
+                    if (res.complexity) {
+                        latestComplexity = res.complexity;
+                    }
+
+                    // On Submission: halt on first failure
+                    if (isSubmission && !res.passed) {
                         stoppedEarly = true;
                         failedTestId = test.id;
                         break;
@@ -176,7 +182,7 @@ function spawnJudgeWorker() {
         };
 
         judgeWorker.onerror = (err) => {
-            console.error("❌ Worker Error:", err);
+            console.error("❌ Worker Script Error:", err);
             reject(err);
         };
 
@@ -280,7 +286,6 @@ async function initPyodide() {
     outputElem.innerText = "Loading Pyodide runtime in Web Worker...";
     await spawnJudgeWorker();
 
-    // Enable buttons if a task is already loaded
     if (currentTaskData) {
       runBtn.disabled = false;
       submitBtn.disabled = false;
@@ -572,26 +577,23 @@ async function executeSuite(isSubmission = false) {
     ? currentTaskData.tests
     : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
 
-  // Fetch shared estimator code to send to worker
   let sharedEstimatorCode = "";
   try {
     const res = await fetch("tasks/complexity_estimator.py");
     if (res.ok) sharedEstimatorCode = await res.text();
   } catch (e) {}
 
-  const TIMEOUT_MS = 10000; // 10-second execution limit
+  const TIMEOUT_MS = 10000; // 10-second total limit
 
   return new Promise((resolve) => {
     let isHandled = false;
 
-    // 1. Timeout Handler: Kills worker if execution exceeds TIMEOUT_MS
     const timeoutId = setTimeout(() => {
       if (isHandled) return;
       isHandled = true;
 
       outputElem.innerText = `❌ [実行エラー / TLE]\n実行時間が制限 (${TIMEOUT_MS / 1000}秒) を超えました。(無限ループの可能性があります)`;
 
-      // Terminate the frozen thread & respawn fresh worker for next run
       spawnJudgeWorker().then(() => {
         runBtn.disabled = false;
         submitBtn.disabled = false;
@@ -599,7 +601,6 @@ async function executeSuite(isSubmission = false) {
       });
     }, TIMEOUT_MS);
 
-    // 2. Message Listener from Worker
     judgeWorker.onmessage = (e) => {
       if (isHandled) return;
       
@@ -608,8 +609,6 @@ async function executeSuite(isSubmission = false) {
         isHandled = true;
 
         const resData = e.data.payload;
-
-        // Render console output in UI
         const modeLabel = isSubmission ? "本採点 (Full Submission)" : "サンプル実行 (Example Run)";
         let outputText = `=== ${modeLabel} ===\n`;
 
@@ -640,7 +639,9 @@ async function executeSuite(isSubmission = false) {
             const icon = r.passed ? "✅" : "❌";
             const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
             outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
-            if (!r.passed) {
+            
+            // Only show detailed Got/Expected output when RUNNING samples, NOT on full Submission
+            if (!r.passed && !isSubmission) {
               outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
               outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;
             }
@@ -676,13 +677,13 @@ async function executeSuite(isSubmission = false) {
       }
     };
 
-    // 3. Post execution task to Worker
     judgeWorker.postMessage({
       action: "RUN_TESTS",
       userCode,
       evaluatorPy: currentTaskData.evaluatorPy,
       testsToRun,
-      sharedEstimatorCode
+      sharedEstimatorCode,
+      isSubmission
     });
   });
 }
