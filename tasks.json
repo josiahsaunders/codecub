@@ -1,5 +1,12 @@
 [
   {
+    "id": "001-add-two-numbers",
+    "title": "1. Add Two Numbers",
+    "difficulty": "Easy",
+    "testCount": 9,
+    "tags": ["math", "basics"]
+  },
+  {
     "id": "001-two-sum",
     "title": "1. Two Sum",
     "difficulty": "Easy",
