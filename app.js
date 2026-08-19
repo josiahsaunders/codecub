@@ -68,7 +68,7 @@ async function initWorker() {
 }
 
 self.onmessage = async function(e) {
-    const { action, userCode, evaluatorPy, test, testIndex, sharedEstimatorCode } = e.data;
+    const { action, userCode, evaluatorPy, test, testIndex, sharedEstimatorCode, sharedBaseCode } = e.data;
 
     if (action === "INIT") {
         await initWorker();
@@ -81,6 +81,11 @@ self.onmessage = async function(e) {
             if (!isSharedLoaded && sharedEstimatorCode) {
                 pyodide.FS.mkdirTree("/home/pyodide/shared");
                 pyodide.FS.writeFile("/home/pyodide/shared/complexity_estimator.py", sharedEstimatorCode);
+
+                if (sharedBaseCode) {
+                  pyodide.FS.writeFile("/home/pyodide/shared/evaluator_base.py", sharedBaseCode);
+                }
+
                 await pyodide.runPythonAsync(\`
                     import sys
                     if "/home/pyodide/shared" not in sys.path:
@@ -240,6 +245,7 @@ async function onProblemSelectChange(e) {
 async function initPyodide() {
   try {
     outputElem.innerText = "Loading Pyodide runtime in Web Worker...";
+
     await spawnJudgeWorker();
 
     if (currentTaskData) {
@@ -250,34 +256,6 @@ async function initPyodide() {
     outputElem.innerText = "Ready! Select a task to begin.";
   } catch (err) {
     outputElem.innerText = `❌ Failed to initialize Python runtime: ${err.message || err}`;
-  }
-}
-
-// --- 2. Parallel Test Loading ---
-async function loadSharedPythonModules() {
-  if (isSharedLoaded || !pyodide) return;
-
-  try {
-    const response = await fetch("tasks/complexity_estimator.py");
-    if (!response.ok) {
-      throw new Error(`Failed to load shared estimator: ${response.statusText}`);
-    }
-
-    const estimatorCode = await response.text();
-
-    pyodide.FS.mkdirTree("/home/pyodide/shared");
-    pyodide.FS.writeFile("/home/pyodide/shared/complexity_estimator.py", estimatorCode);
-
-    await pyodide.runPythonAsync(`
-      import sys
-      if "/home/pyodide/shared" not in sys.path:
-        sys.path.append("/home/pyodide/shared")
-    `);
-
-    isSharedLoaded = true;
-    console.log("✅ Shared Python modules loaded successfully into Pyodide.");
-  } catch (err) {
-    console.error("❌ Error loading shared Python module:", err);
   }
 }
 
@@ -534,12 +512,17 @@ async function executeSuite(isSubmission = false) {
     : currentTaskData.tests.slice(0, EXAMPLE_COUNT);
 
   let sharedEstimatorCode = "";
+  let sharedBaseCode = "";
   try {
-    const res = await fetch("tasks/complexity_estimator.py");
-    if (res.ok) sharedEstimatorCode = await res.text();
+    const [estimatorRes, baseRes] = await Promise.all([
+      fetch("tasks/complexity_estimator.py"),
+      fetch("tasks/evaluator_base.py")
+    ]);
+    if (estimatorRes.ok) sharedEstimatorCode = await estimatorRes.text();
+    if (baseRes.ok) sharedBaseCode = await baseRes.text();
   } catch (e) {}
 
-  const PER_TEST_TIMEOUT_MS = 3000; // 3-second limit per individual test case
+  const PER_TEST_TIMEOUT_MS = 10000; // 10-second limit per individual test case
 
   const testResultsList = [];
   let passedCount = 0;
@@ -589,7 +572,8 @@ async function executeSuite(isSubmission = false) {
         evaluatorPy: currentTaskData.evaluatorPy,
         test,
         testIndex: i,
-        sharedEstimatorCode
+        sharedEstimatorCode,
+        sharedBaseCode
       });
     });
 
