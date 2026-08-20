@@ -10,7 +10,7 @@ def runner(method, in_text, out_text):
     passed = (actual is not None) and (sorted(actual) == sorted(expected))
 
     n = len(nums)
-    iterations = 5 if n < 500 else 1
+    iterations = 10 if n < 100 else (5 if n < 1000 else 1)
     return passed, actual, expected, n, iterations
 
 def evaluate_task(user_code_str, in_text, out_text, test_index):

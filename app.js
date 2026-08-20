@@ -522,7 +522,7 @@ async function executeSuite(isSubmission = false) {
     if (baseRes.ok) sharedBaseCode = await baseRes.text();
   } catch (e) {}
 
-  const PER_TEST_TIMEOUT_MS = 60000; // 60-second limit per individual test case
+  const PER_TEST_TIMEOUT_MS = 120000; // 120-second limit per individual test case
 
   const testResultsList = [];
   let passedCount = 0;

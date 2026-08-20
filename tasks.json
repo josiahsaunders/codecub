@@ -7,17 +7,31 @@
     "tags": ["math", "basics"]
   },
   {
-    "id": "001-two-sum",
-    "title": "1. Two Sum",
+    "id": "002-array-sum",
+    "title": "2. Array Sum",
+    "difficulty": "Easy",
+    "testCount": 11,
+    "tags": ["math", "basics"]
+  },
+  {
+    "id": "003-add-two-arrays",
+    "title": "3. Add Two Arrays",
+    "difficulty": "Easy",
+    "testCount": 9,
+    "tags": ["math", "basics"]
+  },
+  {
+    "id": "004-contains-duplicate",
+    "title": "4. Checking for Duplicates",
+    "difficulty": "Easy",
+    "testCount": 9,
+    "tags": ["math", "basics"]
+  },
+  {
+    "id": "005-two-sum",
+    "title": "5. Two Sum",
     "difficulty": "Easy",
     "testCount": 7,
     "tags": ["array", "hash-table"]
-  },
-  {
-    "id": "002-test-task",
-    "title": "2. Test Task",
-    "difficulty": "Easy",
-    "testCount": 3,
-    "supportFiles": ["supportFile1.py", "supportFile2.py"]
   }
 ]
