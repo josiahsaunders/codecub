@@ -1,10 +1,10 @@
 ### 概要
-2つの整数 `a` と `b` が与えられます。2つの数の和を返す関数 `array_sum(nums)` を実装してください。
+整数からなる配列 `nums` が与えられます。配列のすべての要素の和を返す関数 `array_sum(nums)` を実装してください。
 
-*(Given two integers `a` and `b`, return the sum of the two numbers.)*
+*(Given an array of integers `nums`, implement the function `array_sum(nums)` that returns the sum of all elements in the array.)*
 
 ### 制約
-- `-2 &lt;= nums.length &lt;= 10⁴`
+- `1 &lt;= nums.length &lt;= 10⁴`
 - `-10⁹ &lt;= nums[i] &lt;= 10⁹`
 
 ### 挑戦課題 (Challenge)

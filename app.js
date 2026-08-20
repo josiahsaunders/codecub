@@ -619,14 +619,14 @@ async function executeSuite(isSubmission = false) {
     outputText += `正解数 (Passed): ${passedCount} / ${testsToRun.length} ケース\n`;
   }
 
-  outputText += `合計 CPU 実行時間: ${totalCpuMs.toFixed(3)} ms\n`;
+  outputText += `合計 CPU 実行時間 (Total CPU Time): ${totalCpuMs.toFixed(3)} ms\n`;
   outputText += `最大メモリ使用量 (Peak Memory): ${formatMemory(maxPeakMb)}\n`;
 
   if (isSubmission) {
     const timeComp = latestComplexity ? (latestComplexity.time?.complexity || "N/A") : "N/A";
     const spaceComp = latestComplexity ? (latestComplexity.space?.complexity || "N/A") : "N/A";
-    outputText += `(Estimated Time Complexity): ${timeComp}\n`;
-    outputText += `(Estimated Space Complexity): ${spaceComp}\n`;
+    outputText += `推定時間計算量 (Estimated Time Complexity): ${timeComp}\n`;
+    outputText += `推定空間計算量 (Estimated Space Complexity): ${spaceComp}\n`;
   }
 
   outputText += `----------------------------------------\n\n`;
