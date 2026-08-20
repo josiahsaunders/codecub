@@ -4,7 +4,7 @@
 *(Given an array of integers `nums`, implement the function `array_sum(nums)` that returns the sum of all elements in the array.)*
 
 ### 制約
-- `1 &lt;= nums.length &lt;= 10⁴`
+- `0 &lt;= nums.length &lt;= 10⁴`
 - `-10⁹ &lt;= nums[i] &lt;= 10⁹`
 
 ### 挑戦課題 (Challenge)
