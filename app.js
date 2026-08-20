@@ -155,15 +155,45 @@ function spawnJudgeWorker() {
 function parseMarkdown(md) {
   if (!md) return '';
 
-  return md
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$2</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+  // 1. Inline formatting
+  let html = md
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/^\- (.*$)/gim, '<li>$1</li>')
-    .replace(/\n\n/g, '<br><br>');
+    .replace(/`(.*?)`/g, '<code>$1</code>');
+
+  // 2. Headings
+  html = html
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+  // 3. Convert list blocks explicitly (stripping internal newlines entirely)
+  html = html.replace(/(?:^\- .*(?:\r?\n|$))+/gm, (match) => {
+    const items = match
+      .trim()
+      .split(/\r?\n/)
+      .map(line => `<li>${line.replace(/^\- /, '').trim()}</li>`)
+      .join(''); // Join with empty string to avoid internal \n
+    return `<ul>${items}</ul>`;
+  });
+
+  // 4. Split into blocks and handle paragraphs/breaks safely
+  return html
+    .split(/\r?\n\r?\n/)
+    .map(block => {
+      block = block.trim();
+      if (!block) return '';
+      
+      // If it's already an HTML block tag (heading, list, etc.), don't add <p> or <br>
+      if (/^<(h[1-6]|ul|ol|li|blockquote|pre)/i.test(block)) {
+        return block;
+      }
+      
+      // Only convert newlines to <br> inside standard text paragraphs
+      return `<p>${block.replace(/\r?\n/g, '<br>')}</p>`;
+    })
+    .filter(Boolean)
+    .join('\n');
 }
 
 async function fetchText(url) {
