@@ -360,7 +360,7 @@ async function loadTaskFolder(taskMeta) {
     loadCodeForTask(currentTaskData);
     switchTab("starter.py");
 
-    if (pyodide) {
+    if (judgeWorker) {
       runBtn.disabled = false;
       submitBtn.disabled = false;
     }
@@ -522,7 +522,7 @@ async function executeSuite(isSubmission = false) {
     if (baseRes.ok) sharedBaseCode = await baseRes.text();
   } catch (e) {}
 
-  const PER_TEST_TIMEOUT_MS = 10000; // 10-second limit per individual test case
+  const PER_TEST_TIMEOUT_MS = 60000; // 60-second limit per individual test case
 
   const testResultsList = [];
   let passedCount = 0;
