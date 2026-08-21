@@ -5,12 +5,18 @@ STATIC_COMPLEXITY = {
     "space": {"complexity": "O(1)"}
 }
 
-def runner(method, in_text, out_text):
+def parse_io(in_text: str, out_text: str) -> tuple:
+    # Parse input (1 number per line)
     lines = [line.strip() for line in in_text.strip().splitlines() if line.strip()]
     a, b = int(lines[0]), int(lines[1])
+
+    # Parse output
     expected = int(out_text.strip())
 
-    actual = method(a, b)
+    return (a, b), expected
+
+def runner(method, input_args: tuple, expected: int):
+    actual = method(*input_args)
     passed = (actual == expected)
     
     n = 1
@@ -21,6 +27,7 @@ def evaluate_task(user_code_str, in_text, out_text, test_index):
     return run_evaluator(
         user_code_str, in_text, out_text, test_index,
         method_name="add_two_numbers",
+        parse_fn=parse_io,
         runner_fn=runner,
         static_complexity=STATIC_COMPLEXITY
     )

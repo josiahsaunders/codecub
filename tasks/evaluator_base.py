@@ -4,8 +4,18 @@ import gc
 import tracemalloc
 from complexity_estimator import ComplexityEstimator
 
-def run_evaluator(user_code_str, in_text, out_text, test_index, method_name, runner_fn, static_complexity=None, ast_checker=None):
-    # 1. AST Checks (if task provides one)
+def reset_estimator():
+    if 'GLOBAL_ESTIMATOR' in globals():
+        globals()['GLOBAL_ESTIMATOR'].reset()
+    else:
+        globals()['GLOBAL_ESTIMATOR'] = ComplexityEstimator()
+
+def run_evaluator(user_code_str, in_text, out_text, test_index, method_name, parse_fn, runner_fn, static_complexity=None, ast_checker=None):
+    # Reset state on first test case
+    if test_index == 0:
+        reset_estimator()
+
+    # 1. AST Checks
     if ast_checker:
         try:
             ast_checker(user_code_str)
@@ -31,34 +41,37 @@ def run_evaluator(user_code_str, in_text, out_text, test_index, method_name, run
 
     # 3. Execution & Timing
     try:
+        input_args, expected = parse_fn(in_text, out_text)
+        passed, actual, expected, n, iterations = runner_fn(target_method, input_args, expected)
+
+        # Memory profiling
         gc.collect()
         tracemalloc.start()
 
-        # Delegate parsing & execution to task runner
-        passed, actual, expected, n, iterations = runner_fn(target_method, in_text, out_text)
-
-        start_time = time.perf_counter()
-        for _ in range(iterations):
-            actual = runner_fn(target_method, in_text, out_text)[1]
-        end_time = time.perf_counter()
+        target_method(*input_args)
 
         _, peak_bytes = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
+        # Timing pass
+        start_time = time.perf_counter()
+        for _ in range(iterations):
+            target_method(*input_args)
+        end_time = time.perf_counter()
+
         runtime_ms = ((end_time - start_time) * 1000) / iterations
         peak_mb = peak_bytes / (1024 * 1024)
 
-        # 4. Complexity Handling
+        # 4. Complexity Estimator
         if static_complexity:
             complexity_info = static_complexity
         else:
-            if 'GLOBAL_ESTIMATOR' not in globals():
-                globals()['GLOBAL_ESTIMATOR'] = ComplexityEstimator()
+            estimator = globals()['GLOBAL_ESTIMATOR']
 
             if 3 <= test_index <= 6:
-                globals()['GLOBAL_ESTIMATOR'].add_measurement(n, runtime_ms, peak_mb)
+                estimator.add_measurement(n, runtime_ms, peak_mb)
             
-            complexity_info = globals()['GLOBAL_ESTIMATOR'].estimate()
+            complexity_info = estimator.estimate()
 
         return json.dumps({
             "status": "SUCCESS",

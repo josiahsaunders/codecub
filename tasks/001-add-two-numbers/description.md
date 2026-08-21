@@ -4,7 +4,7 @@
 *(Given two integers `a` and `b`, return the sum of the two numbers.)*
 
 ### 制約
-- `-10⁹ &lt; a, b &lt; 10⁹`
+- `-10⁹ &lt;= a, b &lt;= 10⁹`
 
 ### 挑戦課題 (Challenge)
 - **目標時間計算量 (Target Time Complexity):** `O(1)`

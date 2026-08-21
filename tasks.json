@@ -31,7 +31,7 @@
     "id": "005-two-sum",
     "title": "5. Two Sum",
     "difficulty": "Easy",
-    "testCount": 7,
+    "testCount": 11,
     "tags": ["array", "hash-table"]
   }
 ]
