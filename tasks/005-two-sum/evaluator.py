@@ -16,14 +16,8 @@ def runner(method, input_args: tuple, expected: list[int]):
     passed = (actual is not None) and (sorted(actual) == sorted(expected))
 
     n = len(input_args[0])
-    # Run more iterations for smaller N so total time measured is well above noise floor
-    if n <= 500:
-        iterations = 500
-    elif n <= 2000:
-        iterations = 200
-    else:
-        iterations = 1
-    return passed, actual, expected, n, iterations
+    
+    return passed, actual, expected, n
 
 def evaluate_task(user_code_str, in_text, out_text, test_index):
     return run_evaluator(

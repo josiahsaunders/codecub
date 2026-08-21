@@ -11,66 +11,65 @@ def reset_estimator():
         globals()['GLOBAL_ESTIMATOR'] = ComplexityEstimator()
 
 def run_evaluator(user_code_str, in_text, out_text, test_index, method_name, parse_fn, runner_fn, static_complexity=None, ast_checker=None):
-    # Reset state on first test case
     if test_index == 0:
         reset_estimator()
 
-    # 1. AST Checks
+    # 1. AST Checks & Scope
     if ast_checker:
         try:
             ast_checker(user_code_str)
-        except ValueError as ve:
-            return json.dumps({"status": "COMPILE_ERROR", "error": f"制限違反: {str(ve)}"})
         except Exception as e:
-            return json.dumps({"status": "COMPILE_ERROR", "error": f"Syntax Error: {str(e)}"})
+            return json.dumps({"status": "COMPILE_ERROR", "error": str(e)})
 
-    # 2. Exec Scope
     exec_scope = {}
     try:
         exec(user_code_str, exec_scope)
-        if 'Solution' not in exec_scope:
-            return json.dumps({"status": "COMPILE_ERROR", "error": "Class 'Solution' not found."})
         sol = exec_scope['Solution']()
+        target_method = getattr(sol, method_name)
     except Exception as e:
         return json.dumps({"status": "COMPILE_ERROR", "error": str(e)})
 
-    if not hasattr(sol, method_name):
-        return json.dumps({"status": "COMPILE_ERROR", "error": f"Method '{method_name}' not found on Solution class."})
-
-    target_method = getattr(sol, method_name)
-
-    # 3. Execution & Timing
     try:
         input_args, expected = parse_fn(in_text, out_text)
-        passed, actual, expected, n, iterations = runner_fn(target_method, input_args, expected)
+        passed, actual, expected, n = runner_fn(target_method, input_args, expected)
 
-        # Memory profiling
+        # 2. Combined Single-Pass Memory & Initial Timing
         gc.collect()
         tracemalloc.start()
-
+        
+        t0 = time.perf_counter()
         target_method(*input_args)
-
+        t1 = time.perf_counter()
+        
         _, peak_bytes = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-        # Timing pass
-        start_time = time.perf_counter()
-        for _ in range(iterations):
-            target_method(*input_args)
-        end_time = time.perf_counter()
-
-        runtime_ms = ((end_time - start_time) * 1000) / iterations
+        single_run_ms = (t1 - t0) * 1000.0
         peak_mb = peak_bytes / (1024 * 1024)
 
-        # 4. Complexity Estimator
+        # 3. High-Precision Timing for Sub-Millisecond Runs
+        # If execution takes > 1.0ms (e.g., O(N^2) or heavy work), use single pass directly.
+        if single_run_ms >= 1.0:
+            runtime_ms = single_run_ms
+        else:
+            # For ultrafast functions (Array Sum O(N)), scale iterations up to 2000
+            # to accumulate ~50ms of execution, beating browser clock jitter.
+            iterations = max(1, min(int(50.0 / max(single_run_ms, 0.0005)), 2000))
+            
+            t_start = time.perf_counter()
+            for _ in range(iterations):
+                target_method(*input_args)
+            t_end = time.perf_counter()
+            
+            runtime_ms = ((t_end - t_start) * 1000.0) / iterations
+
+        # 4. Global Estimator
         if static_complexity:
             complexity_info = static_complexity
         else:
             estimator = globals()['GLOBAL_ESTIMATOR']
-
             if 3 <= test_index <= 6:
                 estimator.add_measurement(n, runtime_ms, peak_mb)
-            
             complexity_info = estimator.estimate()
 
         return json.dumps({

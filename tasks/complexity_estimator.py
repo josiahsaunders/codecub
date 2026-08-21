@@ -19,20 +19,14 @@ class ComplexityEstimator:
         if len(self.time_points) < 2:
             return {"complexity": "N/A", "reason": "Not enough data points"}
 
-        unique_n = len({p[0] for p in self.time_points})
-        if unique_n < 2:
-            return {"complexity": "N/A", "reason": "Need varying input sizes"}
-
         k = self._calculate_log_exponent(self.time_points)
 
-        # Threshold bands calibrated for N=100 up to N=10,000
-        if k <= 0.30:
+        # Thresholds calibrated for Pyodide WASM heap allocation & call overhead
+        if k <= 0.35:
             complexity = "O(1)"
-        elif k <= 0.70:
-            complexity = "O(log N)"
-        elif k <= 1.35:
+        elif k <= 1.60:         # Adjusted to 1.60 to account for O(N) heap allocations
             complexity = "O(N)"
-        elif k <= 1.80:
+        elif k <= 1.85:
             complexity = "O(N log N)"
         elif k <= 2.60:
             complexity = "O(N^2)"

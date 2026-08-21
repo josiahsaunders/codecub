@@ -18,10 +18,10 @@ def parse_io(in_text: str, out_text: str) -> tuple:
 def runner(method, input_args: tuple, expected: int):
     actual = method(*input_args)
     passed = (actual == expected)
-    
+
     n = 1
-    iterations = 10
-    return passed, actual, expected, n, iterations
+
+    return passed, actual, expected, n
 
 def evaluate_task(user_code_str, in_text, out_text, test_index):
     return run_evaluator(
