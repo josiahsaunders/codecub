@@ -40,5 +40,12 @@
     "difficulty": "Easy",
     "testCount": 10,
     "tags": ["math", "real-life"]
-  }
+  },
+  {
+  "id": "00Y-poker-hand-ranking",
+  "title": "Y. Poker Hand Ranking",
+  "difficulty": "Medium",
+  "testCount": 10,
+  "tags": ["array", "sorting", "real-life"]
+}
 ]
