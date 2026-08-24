@@ -24,7 +24,7 @@
     "id": "004-contains-duplicate",
     "title": "4. Checking for Duplicates",
     "difficulty": "Easy",
-    "testCount": 9,
+    "testCount": 14,
     "tags": ["math", "basics"]
   },
   {
@@ -33,5 +33,12 @@
     "difficulty": "Easy",
     "testCount": 11,
     "tags": ["array", "hash-table"]
+  },
+  {
+    "id": "00X-credit-card-validation",
+    "title": "X. Credit Card Validation",
+    "difficulty": "Easy",
+    "testCount": 10,
+    "tags": ["math", "real-life"]
   }
 ]
