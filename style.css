@@ -22,7 +22,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg-dark);
   color: var(--text-main);
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
@@ -30,20 +31,24 @@ body {
 .app-container {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
+  overflow: hidden;
 }
 
-/* --- Sidebar (Tasks & Instructions) --- */
+/* --- Sidebar (Expanded for Better Readability) --- */
 .sidebar {
-  width: 33%;
-  min-width: 250px;
+  width: 380px;
+  min-width: 320px;
+  max-width: 450px;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
-  gap: 1rem;
+  padding: 1.25rem;
+  gap: 1.25rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; 
 }
 
 .sidebar h2 {
@@ -53,9 +58,9 @@ body {
   color: var(--text-muted);
 }
 
-#tagSelect {
+#tagSelect, #taskSelect {
   width: 100%;
-  padding: 0.6rem;
+  padding: 0.6rem 0.8rem;
   background-color: var(--bg-panel);
   color: var(--text-main);
   border: 1px solid var(--border-color);
@@ -63,32 +68,69 @@ body {
   font-size: 0.95rem;
   outline: none;
   cursor: pointer;
+  min-height: 42px; 
 }
 
-#taskSelect {
-  width: 100%;
-  padding: 0.6rem;
-  background-color: var(--bg-panel);
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 0.95rem;
-  outline: none;
-  cursor: pointer;
-}
-
-#taskSelect:focus {
+#taskSelect:focus, #tagSelect:focus {
   border-color: var(--accent-secondary);
 }
 
+/* --- Improved Markdown Formatting (Breaks Up Blocks of Text) --- */
 .markdown-body {
-  line-height: 1.6;
-  font-size: 0.95rem;
+  line-height: 1.65;
+  font-size: 0.92rem;
   color: var(--text-main);
 }
 
+.markdown-body h1, 
+.markdown-body h2, 
+.markdown-body h3 {
+  color: #ffffff;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown-body h1 { font-size: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+.markdown-body h2 { font-size: 1.1rem; }
+.markdown-body h3 { font-size: 1rem; }
+
 .markdown-body p {
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.markdown-body ul, 
+.markdown-body ol {
+  margin-bottom: 0.9rem;
+  padding-left: 1.3rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #f5e0dc;
+}
+
+.markdown-body pre {
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 0.9rem;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
 }
 
 /* --- Main Editor & Console Section --- */
@@ -97,13 +139,17 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-dark);
+  min-width: 0;
+  height: 100%;
 }
 
 /* --- Toolbar Header --- */
 .editor-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   padding: 0.6rem 1rem;
   background-color: var(--bg-panel);
   border-bottom: 1px solid var(--border-color);
@@ -111,18 +157,25 @@ body {
 
 .file-actions, .execution-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
 }
 
 /* --- Buttons --- */
 .btn {
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem 0.9rem;
   font-size: 0.85rem;
   font-weight: 600;
   border-radius: 5px;
   border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .btn:disabled {
@@ -150,19 +203,11 @@ body {
 }
 
 /* --- CodeMirror Wrapper --- */
-.editor-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-
 #editor-wrapper {
   flex: 1;
   position: relative;
-  min-height: 0;
+  min-height: 180px;
+  width: 100%;
 }
 
 #editor-wrapper .CodeMirror {
@@ -177,15 +222,17 @@ body {
   background-color: var(--bg-dark);
 }
 
-/* Force CodeMirror's inner scroll container to fill 100% height */
 #editor-wrapper .CodeMirror-scroll {
   height: 100% !important;
   min-height: 100% !important;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* --- Console / Output Panel --- */
+/* --- Console Output Panel --- */
 .output-panel {
   height: 220px;
+  min-height: 120px;
+  max-height: 40vh;
   background-color: #0d0d10;
   border-top: 1px solid var(--border-color);
   display: flex;
@@ -212,6 +259,7 @@ body {
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* --- Tab Strip Container --- */
@@ -221,10 +269,11 @@ body {
   border-bottom: 1px solid var(--border-color);
   padding-left: 0.5rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .editor-tab {
-  padding: 0.4rem 0.9rem;
+  padding: 0.5rem 0.9rem;
   background-color: var(--bg-sidebar);
   color: var(--text-muted);
   border: 1px solid var(--border-color);
@@ -238,6 +287,7 @@ body {
   font-size: 0.85rem;
   user-select: none;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .editor-tab:hover {
@@ -260,14 +310,15 @@ body {
 
 /* --- Read-Only File Viewer Box --- */
 .readonly-view {
-  flex: 1; /* Fills remaining height identically to #editor-wrapper */
+  flex: 1;
   background-color: var(--bg-dark);
   color: var(--text-main);
   padding: 1rem;
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.5;
-  overflow: auto; /* Handles internal scrolling for long support files */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .readonly-view pre {
@@ -280,170 +331,180 @@ body {
   display: none !important;
 }
 
-/* --- Nickname Input & History Button --- */
+/* --- User Profile Section --- */
 .user-profile-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .input-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
 #nicknameInput {
-    width: 100%;
-    padding: 0.6rem;
-    background-color: var(--bg-panel);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 0.95rem;
-    outline: none;
+  width: 100%;
+  padding: 0.6rem;
+  background-color: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  min-height: 42px;
 }
 
 #nicknameInput:focus {
-    border-color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
 }
 
 .width-full {
-    width: 100%;
+  width: 100%;
 }
 
 /* --- History Modal --- */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
 .modal-content {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background-color: var(--bg-sidebar);
-    border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
-    font-size: 1.1rem;
-    color: var(--text-main);
+  font-size: 1.1rem;
+  color: var(--text-main);
 }
 
 .close-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.5rem;
-    cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.2rem 0.6rem;
 }
 
 .close-btn:hover {
-    color: var(--text-main);
+  color: var(--text-main);
 }
 
 .modal-body {
-    padding: 1rem;
-    overflow-y: auto;
-    flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* History Item Card */
 .history-item {
-    background-color: var(--bg-dark);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0.8rem;
-    margin-bottom: 0.8rem;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
 }
 
 .history-item-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 0.4rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
 }
 
 .history-status {
-    font-weight: 600;
-    font-size: 0.95rem;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .history-status.passed {
-    color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .history-status.failed {
-    color: #ff5252;
+  color: #ff5252;
 }
 
-/* Leaderboard Card Container */
+/* --- Leaderboard Card & Non-Wrapping Buttons --- */
 .leaderboard-card {
   background: #1e1e2e;
   border: 1px solid #313244;
   border-radius: 8px;
-  padding: 16px;
-  margin-top: 20px;
+  padding: 14px;
+  margin-top: 10px;
   color: #cdd6f4;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Header & Tab Buttons */
 .leaderboard-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
   border-bottom: 1px solid #313244;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
 }
 
 .leaderboard-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #f5e0dc;
 }
 
 .tab-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
 }
 
 .tab-btn {
+  flex: 1;
   background: #313244;
   color: #a6adc8;
   border: 1px solid #45475a;
   border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 0.85rem;
+  padding: 6px 10px;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 36px;
+  white-space: nowrap; /* Prevents button text wrapping */
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tab-btn:hover {
@@ -458,28 +519,26 @@ body {
   border-color: #89b4fa;
 }
 
-/* Leaderboard Table */
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-align: left;
 }
 
 .leaderboard-table th {
   background: #181825;
   color: #a6adc8;
-  padding: 10px;
+  padding: 8px;
   font-weight: 600;
   border-bottom: 2px solid #313244;
 }
 
 .leaderboard-table td {
-  padding: 10px;
+  padding: 8px;
   border-bottom: 1px solid #313244;
 }
 
-/* Current User Highlight Row */
 .leaderboard-table tr.highlight-user {
   background: rgba(137, 180, 250, 0.15);
   border-left: 3px solid #89b4fa;
@@ -492,12 +551,66 @@ body {
   margin-left: 4px;
 }
 
-/* Complexity Badges */
 .badge {
   background: #313244;
   color: #a6e3a1;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+/* ==========================================
+   RESPONSIVE MEDIA QUERIES
+   ========================================== */
+
+@media screen and (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 50vh;
+  }
+
+  .editor-section {
+    height: 85vh;
+    min-height: 500px;
+  }
+
+  .leaderboard-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tab-group {
+    width: auto;
+  }
+
+  .execution-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .execution-actions .btn {
+    flex: 1;
+  }
+}
+
+@media screen and (min-width: 901px) and (max-width: 1200px) {
+  .sidebar {
+    width: 340px;
+  }
 }
