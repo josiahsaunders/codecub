@@ -3,6 +3,8 @@
 
 *(Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.)*
 
+---
+
 ### 制約
 - 答えは必ず1つだけ存在します。
 - 同じ要素を2回使用することはできません。
@@ -10,9 +12,13 @@
 - `-10⁹ &lt;= nums[i] &lt;= 10⁹`
 - `-10⁹ &lt;= target &lt;= 10⁹`
 
+---
+
 ### 挑戦課題 (Challenge)
 - **目標時間計算量 (Target Time Complexity):** `O(N)`
 - **目標空間計算量 (Target Space Complexity):** `O(N)`
+
+---
 
 ### 入出力例
 **例 1:**

@@ -3,14 +3,20 @@
 
 *(Given two integer arrays `a` and `b` of equal length, implement the function `array_pair_sum(a, b)` that returns a new array containing the element-wise sum of the two arrays.)*
 
+---
+
 ### 制約
 - `1 &lt;= a.length, b.length &lt;= 10⁴`
 - `-10⁹ &lt;= a[i], b[i] &lt;= 10⁹`
 - `a.length == b.length`
 
+---
+
 ### 挑戦課題 (Challenge)
 - **目標時間計算量 (Target Time Complexity):** `O(N)`
 - **目標空間計算量 (Target Space Complexity):** `O(1)`
+
+---
 
 ### 入出力例
 **例 1:**
