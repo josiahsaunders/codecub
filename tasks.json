@@ -46,7 +46,14 @@
     "title": "7. FizzBuzz",
     "difficulty": "Easy",
     "testCount": 7,
-    "tags": ["string"]
+    "tags": ["math", "string"]
+  },
+  {
+    "id": "008-temperature-converter",
+    "title": "8. Temperature Converter",
+    "difficulty": "Easy",
+    "testCount": 12,
+    "tags": ["math"]
   },
   {
     "id": "00X-credit-card-validation",
