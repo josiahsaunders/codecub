@@ -35,6 +35,13 @@
     "tags": ["array", "hash-table"]
   },
   {
+    "id": "006-check-palindrome",
+    "title": "6. Checking for Palindromes",
+    "difficulty": "Easy",
+    "testCount": 13,
+    "tags": ["string"]
+  },
+  {
     "id": "00X-credit-card-validation",
     "title": "X. Credit Card Validation",
     "difficulty": "Easy",
