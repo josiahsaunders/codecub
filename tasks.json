@@ -39,6 +39,13 @@
     "title": "6. Checking for Palindromes",
     "difficulty": "Easy",
     "testCount": 13,
+    "tags": ["math"]
+  },
+  {
+    "id": "007-fizzbuzz",
+    "title": "7. FizzBuzz",
+    "difficulty": "Easy",
+    "testCount": 7,
     "tags": ["string"]
   },
   {
