@@ -56,6 +56,13 @@
     "tags": ["math"]
   },
   {
+    "id": "009-shopping-cart",
+    "title": "9. Shopping Cart Calculator",
+    "difficulty": "Easy",
+    "testCount": 19,
+    "tags": ["math"]
+  },
+  {
     "id": "00X-credit-card-validation",
     "title": "X. Credit Card Validation",
     "difficulty": "Easy",
