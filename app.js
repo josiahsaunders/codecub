@@ -50,6 +50,7 @@ let currentLeaderboardUsername = "";
 let judgeWorker = null;
 
 // Inline Worker Code
+// Inline Worker Code
 const workerCode = `
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js");
 
@@ -77,6 +78,14 @@ self.onmessage = async function(e) {
 
     if (action === "RUN_SINGLE_TEST") {
         try {
+            // Redirect stdout to capture user print statements
+            let capturedLogs = [];
+            pyodide.setStdout({
+                batched: (text) => {
+                    capturedLogs.push(text);
+                }
+            });
+
             // Load shared modules once inside worker
             if (!isSharedLoaded && sharedEstimatorCode) {
                 pyodide.FS.mkdirTree("/home/pyodide/shared");
@@ -86,24 +95,26 @@ self.onmessage = async function(e) {
                   pyodide.FS.writeFile("/home/pyodide/shared/evaluator_base.py", sharedBaseCode);
                 }
 
-                await pyodide.runPythonAsync(\`
-                    import sys
-                    if "/home/pyodide/shared" not in sys.path:
-                        sys.path.append("/home/pyodide/shared")
-                \`);
+                await pyodide.runPythonAsync(
+                    "import sys\\n" +
+                    "if '/home/pyodide/shared' not in sys.path:\\n" +
+                    "    sys.path.append('/home/pyodide/shared')"
+                );
                 isSharedLoaded = true;
             }
 
             await pyodide.runPythonAsync(evaluatorPy);
             const evaluateTask = pyodide.globals.get("evaluate_task");
 
-            // Reset complexity estimator state on first test case
             if (testIndex === 0) {
                 await pyodide.runPythonAsync("if 'reset_estimator' in globals(): reset_estimator()");
             }
 
             const rawResult = evaluateTask(userCode, test.input, test.expectedOutput, testIndex);
             const res = JSON.parse(rawResult);
+
+            // Attach collected logs to the result payload
+            res.logs = capturedLogs.join("\\n");
 
             if (evaluateTask && typeof evaluateTask.destroy === "function") {
                 evaluateTask.destroy();
@@ -675,12 +686,30 @@ async function executeSuite(isSubmission = false) {
   outputText += `----------------------------------------\n\n`;
 
   testResultsList.forEach((r) => {
+    const hasStdout = r.logs && r.logs.trim().length > 0;
+
     if (r.status === "SUCCESS") {
+      // Disqualify on official submission if stdout is present
+      if (isSubmission && hasStdout) {
+        r.passed = false;
+      }
+
       const icon = r.passed ? "✅" : "❌";
       const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
       outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
 
-      // Show Got/Expected output details ONLY for sample runs (isSubmission = false)
+      // 1. Sample Run Warning & Logs
+      if (!isSubmission && hasStdout) {
+        outputText += `   ⚠️ 警告: コード内に print 文が含まれています。本採点では失格対象となります。\n`;
+        outputText += `   標準出力 (stdout):\n     ${r.logs.replace(/\n/g, "\n     ")}\n`;
+      }
+
+      // 2. Submission Disqualification Notice
+      if (isSubmission && hasStdout) {
+        outputText += `   💥 失格理由: 余計な print 文（標準出力）が検出されました。デバッグ用の出力は削除してください。\n`;
+      }
+
+      // Show Got/Expected output details for sample runs
       if (!r.passed && !isSubmission) {
         outputText += `   出力結果 (Got): ${JSON.stringify(r.got)}\n`;
         outputText += `   期待する出力 (Expected): ${JSON.stringify(r.expected)}\n`;

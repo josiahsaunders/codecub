@@ -2,6 +2,8 @@ import json
 import time
 import gc
 import tracemalloc
+import sys
+import io
 from complexity_estimator import ComplexityEstimator
 
 def reset_estimator():
@@ -31,35 +33,47 @@ def run_evaluator(user_code_str, in_text, out_text, test_index, method_name, par
 
     try:
         input_args, expected = parse_fn(in_text, out_text)
+        
+        # --- PASS 1: Main Run (CAPTURES STDOUT ONCE) ---
         passed, actual, expected, n = runner_fn(target_method, input_args, expected)
 
-        # 2. Combined Single-Pass Memory & Initial Timing
+        # Helper to suppress stdout during benchmarking passes
+        devnull = io.StringIO()
+
+        # --- PASS 2: Memory Pass (STDOUT SUPPRESSED) ---
         gc.collect()
         tracemalloc.start()
         
-        t0 = time.perf_counter()
-        target_method(*input_args)
-        t1 = time.perf_counter()
-        
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            t0 = time.perf_counter()
+            target_method(*input_args)
+            t1 = time.perf_counter()
+        finally:
+            sys.stdout = old_stdout
+
         _, peak_bytes = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
         single_run_ms = (t1 - t0) * 1000.0
         peak_mb = peak_bytes / (1024 * 1024)
 
-        # 3. High-Precision Timing for Sub-Millisecond Runs
-        # If execution takes > 1.0ms (e.g., O(N^2) or heavy work), use single pass directly.
+        # --- PASS 3: High-Precision Timing Loop (STDOUT SUPPRESSED) ---
         if single_run_ms >= 1.0:
             runtime_ms = single_run_ms
         else:
-            # For ultrafast functions (Array Sum O(N)), scale iterations up to 2000
-            # to accumulate ~50ms of execution, beating browser clock jitter.
             iterations = max(1, min(int(50.0 / max(single_run_ms, 0.0005)), 2000))
             
-            t_start = time.perf_counter()
-            for _ in range(iterations):
-                target_method(*input_args)
-            t_end = time.perf_counter()
+            old_stdout = sys.stdout
+            sys.stdout = devnull
+            try:
+                t_start = time.perf_counter()
+                for _ in range(iterations):
+                    target_method(*input_args)
+                t_end = time.perf_counter()
+            finally:
+                sys.stdout = old_stdout
             
             runtime_ms = ((t_end - t_start) * 1000.0) / iterations
 
