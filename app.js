@@ -162,62 +162,36 @@ function spawnJudgeWorker() {
     });
 }
 
-// Helper: Simple Markdown Parser
-function parseMarkdown(md) {
-  if (!md) return '';
+// Helper: Full Markdown & Math Parser using Marked + KaTeX
+function parseMarkdown(mdText) {
+  if (!mdText) return '';
 
-  let html = md;
+  // 1. Pre-process LaTeX equations so Marked doesn't destroy backslashes/underscores
+  let processed = mdText;
 
-  // 1. Horizontal Rules
-  html = html.replace(/^---$/gm, '<hr>');
-
-  // 2. Inline formatting (Bold, Italic, Code)
-  html = html
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>');
-
-  // 3. Headings
-  html = html
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>');
-
-  // 4. Ordered Lists (matches lines starting with "1. ", "2. ", or indented "  1. ")
-  html = html.replace(/(?:^\s*\d+\.\s+.*(?:\r?\n|$))+/gm, (match) => {
-    const items = match
-      .trim()
-      .split(/\r?\n/)
-      .map(line => `<li>${line.replace(/^\s*\d+\.\s+/, '').trim()}</li>`)
-      .join('');
-    return `<ol>${items}</ol>`;
-  });
-
-  // 5. Unordered Lists (matches lines starting with "- ", "* ", or indented "  - ")
-  html = html.replace(/(?:^\s*[\-\*]\s+.*(?:\r?\n|$))+/gm, (match) => {
-    const items = match
-      .trim()
-      .split(/\r?\n/)
-      .map(line => `<li>${line.replace(/^\s*[\-\*]\s+/, '').trim()}</li>`)
-      .join('');
-    return `<ul>${items}</ul>`;
-  });
-
-  // 6. Paragraphs (wrap loose lines that aren't headers, lists, or rules)
-  const blockLines = html.split(/\r?\n\r?\n/);
-  html = blockLines.map(block => {
-    const trimmed = block.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('<h') || 
-        trimmed.startsWith('<ul') || 
-        trimmed.startsWith('<ol') || 
-        trimmed.startsWith('<hr')) {
-      return trimmed;
+  // Block math: $$ ... $$
+  processed = processed.replace(/\$\$([\s\S]+?)\$\$/g, (match, math) => {
+    try {
+      return `<div class="math-block">${katex.renderToString(math.trim(), { displayMode: true })}</div>`;
+    } catch (e) {
+      return match;
     }
-    return `<p>${trimmed.replace(/\r?\n/g, '<br>')}</p>`;
-  }).join('');
+  });
 
-  return html;
+  // Inline math: $ ... $
+  processed = processed.replace(/\$([^\$\n]+?)\$/g, (match, math) => {
+    try {
+      return katex.renderToString(math.trim(), { displayMode: false });
+    } catch (e) {
+      return match;
+    }
+  });
+
+  // 2. Parse Markdown (handles nested lists, bold, tables, headers, code blocks natively)
+  return marked.parse(processed, {
+    gfm: true,
+    breaks: true
+  });
 }
 
 async function fetchText(url) {

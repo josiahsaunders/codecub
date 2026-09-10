@@ -6,8 +6,8 @@
 ---
 
 ### 制約
-- `0 &lt;= nums.length &lt;= 10⁴`
-- `-10⁹ &lt;= nums[i] &lt;= 10⁹`
+- `0 <= nums.length <= 10⁴`
+- `-10⁹ <= nums[i] <= 10⁹`
 
 ---
 

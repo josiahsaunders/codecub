@@ -4,8 +4,8 @@
 指定された単位に応じて温度を変換し、小数第1位まで四捨五入（`round(val, 1)`）した結果を返してください。
 
 変換ルール：
-- **華氏（Fahrenheit / `"F"`）:** F = C * (9 / 5) + 32
-- **絶対温度（Kelvin / `"K"`）:** K = C + 273.15
+- **華氏（Fahrenheit / `"F"`）:** $F = C \times (9 / 5) + 32$
+- **絶対温度（Kelvin / `"K"`）:** $K = C + 273.15$
 
 *(Given a float `temp` in Celsius and a string `unit` (`"F"` or `"K"`), convert the temperature to the target unit and return the result rounded to 1 decimal place.)*
 
@@ -32,7 +32,7 @@
 **例 2:**
 - **入力:** `temp = 0.0`, `unit = "K"`
 - **出力:** `273.2`
-- **説明:** 0.0 + 273.15 = 273.15 (四捨五入して 273.2)
+- **説明:** 0.0 + 273.15 = 273.15 (四捨五入して 273.1)
 
 **例 3:**
 - **入力:** `temp = -40.0`, `unit = "F"`

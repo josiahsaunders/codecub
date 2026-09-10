@@ -6,8 +6,8 @@
 ---
 
 ### 制約
-- `1 &lt;= a.length, b.length &lt;= 10⁴`
-- `-10⁹ &lt;= a[i], b[i] &lt;= 10⁹`
+- `1 <= a.length, b.length <= 10⁴`
+- `-10⁹ <= a[i], b[i] <= 10⁹`
 - `a.length == b.length`
 
 ---
