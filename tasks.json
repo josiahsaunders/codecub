@@ -70,6 +70,13 @@
     "tags": ["string"]
   },
   {
+    "id": "011-reverse-string",
+    "title": "11. Reverse String",
+    "difficulty": "Easy",
+    "testCount": 12,
+    "tags": ["string"]
+  },
+  {
     "id": "00X-credit-card-validation",
     "title": "X. Credit Card Validation",
     "difficulty": "Easy",
