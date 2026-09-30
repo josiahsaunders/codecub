@@ -77,6 +77,13 @@
     "tags": ["string"]
   },
   {
+    "id": "012-caesar-shift-cipher",
+    "title": "12. Caesar Shift Cipher",
+    "difficulty": "Easy",
+    "testCount": 15,
+    "tags": ["string"]
+  },
+  {
     "id": "00X-credit-card-validation",
     "title": "X. Credit Card Validation",
     "difficulty": "Easy",
