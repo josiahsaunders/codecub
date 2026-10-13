@@ -84,6 +84,13 @@
     "tags": ["string"]
   },
   {
+    "id": "013-run-length-encoder",
+    "title": "13. Run-Length Encoder",
+    "difficulty": "Easy",
+    "testCount": 15,
+    "tags": ["string"]
+  },
+  {
     "id": "00X-credit-card-validation",
     "title": "X. Credit Card Validation",
     "difficulty": "Easy",
