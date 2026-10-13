@@ -11,21 +11,21 @@
     "title": "2. Array Sum",
     "difficulty": "Easy",
     "testCount": 11,
-    "tags": ["math", "basics"]
+    "tags": ["math", "array", "basics"]
   },
   {
     "id": "003-add-two-arrays",
     "title": "3. Add Two Arrays",
     "difficulty": "Easy",
     "testCount": 10,
-    "tags": ["math", "basics"]
+    "tags": ["math", "array", "basics"]
   },
   {
     "id": "004-contains-duplicate",
     "title": "4. Checking for Duplicates",
     "difficulty": "Easy",
     "testCount": 14,
-    "tags": ["math", "basics"]
+    "tags": ["array", "hash-table"]
   },
   {
     "id": "005-two-sum",
@@ -39,7 +39,7 @@
     "title": "6. Checking for Palindromes",
     "difficulty": "Easy",
     "testCount": 13,
-    "tags": ["math"]
+    "tags": ["string"]
   },
   {
     "id": "007-fizzbuzz",
@@ -60,7 +60,7 @@
     "title": "9. Shopping Cart Calculator",
     "difficulty": "Easy",
     "testCount": 19,
-    "tags": ["math"]
+    "tags": ["math", "array"]
   },
   {
     "id": "010-ip-validation",
@@ -95,25 +95,25 @@
     "title": "14. Roman Numerals to Integers",
     "difficulty": "Easy",
     "testCount": 19,
-    "tags": ["string"]
+    "tags": ["string", "hash-table"]
   },
   {
-    "id": "00X-credit-card-validation",
-    "title": "X. Credit Card Validation",
+    "id": "015-credit-card-validation",
+    "title": "15. Credit Card Validation",
     "difficulty": "Easy",
     "testCount": 10,
-    "tags": ["math", "real-life"]
+    "tags": ["math", "string", "real-life"]
   },
   {
-    "id": "00Y-poker-hand-ranking",
-    "title": "Y. Poker Hand Ranking",
+    "id": "016-poker-hand-ranking",
+    "title": "16. Poker Hand Ranking",
     "difficulty": "Medium",
     "testCount": 11,
     "tags": ["array", "sorting", "real-life"]
   },
   {
-    "id": "00Z-grid-flood-fill",
-    "title": "Z. Grid Flood Fill",
+    "id": "017-grid-flood-fill",
+    "title": "17. Grid Flood Fill",
     "difficulty": "Medium",
     "testCount": 12,
     "tags": ["matrix", "bfs", "dfs", "graph"]
