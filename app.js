@@ -412,7 +412,8 @@ function renderTaskList(selectedTag = "ALL") {
 
   problemSelect.innerHTML = matchingTasks.map(task => {
     const originalIdx = tasksCatalog.findIndex(t => t.id === task.id);
-    return `<option value="${originalIdx}">${task.title}</option>`;
+    const difficultyLabel = task.difficulty ? `[${task.difficulty}] ` : "";
+    return `<option value="${originalIdx}">${difficultyLabel}${task.title}</option>`;
   }).join('');
 }
 
