@@ -138,5 +138,12 @@
     "difficulty": "Easy",
     "testCount": 14,
     "tags": ["math", "real-life"]
+  },
+  {
+    "id": "021-microwave-queue",
+    "title": "21. Breakroom Microwave Queue",
+    "difficulty": "Medium",
+    "testCount": 14,
+    "tags": ["simulation", "sorting", "real-life"]
   }
 ]
