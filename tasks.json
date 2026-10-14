@@ -124,5 +124,12 @@
     "difficulty": "Medium",
     "testCount": 17,
     "tags": ["array", "math", "real-life"]
+  },
+  {
+    "id": "019-chatroom-filter",
+    "title": "19. Chatroom Filter",
+    "difficulty": "Easy",
+    "testCount": 18,
+    "tags": ["string", "real-life"]
   }
 ]
