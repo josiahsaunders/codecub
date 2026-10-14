@@ -117,5 +117,12 @@
     "difficulty": "Medium",
     "testCount": 12,
     "tags": ["matrix", "bfs", "dfs", "graph"]
+  },
+  {
+    "id": "018-stock-market-profit-maximiser",
+    "title": "18. Stock Market Profit Maximiser",
+    "difficulty": "Medium",
+    "testCount": 17,
+    "tags": ["array", "math", "real-life"]
   }
 ]
