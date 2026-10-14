@@ -131,5 +131,12 @@
     "difficulty": "Easy",
     "testCount": 18,
     "tags": ["string", "real-life"]
+  },
+  {
+    "id": "020-aabb-collision",
+    "title": "20. Hitbox Collision Detection (AABB)",
+    "difficulty": "Easy",
+    "testCount": 14,
+    "tags": ["math", "real-life"]
   }
 ]
