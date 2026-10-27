@@ -159,5 +159,12 @@
     "difficulty": "Easy",
     "testCount": 20,
     "tags": ["array", "loops", "search", "fundamentals"]
+  },
+  {
+    "id": "024-assign-grade",
+    "title": "24. Assign Letter Grade",
+    "difficulty": "Easy",
+    "testCount": 19,
+    "tags": ["conditionals", "grading", "boundaries", "fundamentals"]
   }
 ]
