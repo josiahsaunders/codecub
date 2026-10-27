@@ -180,5 +180,12 @@
     "difficulty": "Easy",
     "testCount": 16,
     "tags": ["array", "arithmetic", "mean", "fundamentals"]
+  },
+  {
+    "id": "027-filter-even-numbers",
+    "title": "27. Filter Even Numbers",
+    "difficulty": "Easy",
+    "testCount": 16,
+    "tags": ["array", "filtering", "conditionals", "fundamentals"]
   }
 ]
