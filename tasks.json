@@ -152,5 +152,12 @@
     "difficulty": "Medium",
     "testCount": 13,
     "tags": ["matrix", "bfs", "graph", "search"]
+  },
+  {
+    "id": "023-list-maximum",
+    "title": "23. Find the Maximum in a List",
+    "difficulty": "Easy",
+    "testCount": 20,
+    "tags": ["array", "loops", "search", "fundamentals"]
   }
 ]
