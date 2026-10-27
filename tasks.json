@@ -173,5 +173,12 @@
     "difficulty": "Easy",
     "testCount": 19,
     "tags": ["array", "linear-search", "index", "fundamentals"]
+  },
+  {
+    "id": "026-calculate-mean",
+    "title": "26. Calculate Mean of a List",
+    "difficulty": "Easy",
+    "testCount": 16,
+    "tags": ["array", "arithmetic", "mean", "fundamentals"]
   }
 ]
