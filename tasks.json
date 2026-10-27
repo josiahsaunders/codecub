@@ -166,5 +166,12 @@
     "difficulty": "Easy",
     "testCount": 19,
     "tags": ["conditionals", "grading", "boundaries", "fundamentals"]
+  },
+  {
+    "id": "025-find-first-occurrence",
+    "title": "25. Find First Occurrence Index",
+    "difficulty": "Easy",
+    "testCount": 19,
+    "tags": ["array", "linear-search", "index", "fundamentals"]
   }
 ]
