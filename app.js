@@ -844,10 +844,25 @@ async function executeSuite(isSubmission = false) {
   outputText += `----------------------------------------\n\n`;
 
   testResultsList.forEach((r) => {
-    const icon = r.passed ? "✅" : "❌";
-    const statusText = r.passed ? "正解 (PASSED)" : "不正解 (FAILED)";
-    outputText += `${icon} テスト ${r.id}: ${statusText} (${r.runtime_ms.toFixed(3)} ms, ${formatMemory(r.peak_mb)})\n`;
-  });
+      let icon = "❌";
+      let statusText = "不正解 (FAILED)";
+
+      if (r.status === "SUCCESS") {
+        if (r.passed) {
+          icon = "✅";
+          statusText = "正解 (PASSED)";
+        }
+      } else if (r.status === "TLE") {
+        statusText = "タイムアウト (TLE)";
+      } else if (r.status === "ERROR") {
+        statusText = "エラー (ERROR)";
+      }
+
+      const runtimeStr = typeof r.runtime_ms === "number" ? `${r.runtime_ms.toFixed(3)} ms` : "N/A";
+      const peakMbStr = formatMemory(r.peak_mb);
+
+      outputText += `${icon} テスト ${r.id}: ${statusText} (${runtimeStr}, ${peakMbStr})\n`;
+    });
 
   outputElem.innerText = outputText;
 
