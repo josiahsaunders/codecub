@@ -194,5 +194,12 @@
     "difficulty": "Easy",
     "testCount": 17,
     "tags": ["array", "conditionals", "math", "fundamentals"]
+  },
+  {
+    "id": "029-cat-age-calculator",
+    "title": "29. Cat Age Calculator",
+    "difficulty": "Easy",
+    "testCount": 8,
+    "tags": ["conditionals", "arithmetic", "fundamentals"]
   }
 ]
