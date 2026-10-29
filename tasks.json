@@ -208,5 +208,13 @@
     "difficulty": "Easy",
     "testCount": 15,
     "tags": ["array", "fundamentals", "search"]
+  },
+  {
+    "id": "031-count-substring-occurrences",
+    "title": "31. Count Substring Occurrences",
+    "difficulty": "Easy",
+    "testCount": 16,
+    "tags": ["string", "fundamentals", "search"]
   }
+
 ]
