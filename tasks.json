@@ -187,5 +187,12 @@
     "difficulty": "Easy",
     "testCount": 16,
     "tags": ["array", "filtering", "conditionals", "fundamentals"]
+  },
+  {
+    "id": "028-leap-year-calculator",
+    "title": "28. Leap Year Calculator",
+    "difficulty": "Easy",
+    "testCount": 17,
+    "tags": ["array", "conditionals", "math", "fundamentals"]
   }
 ]
