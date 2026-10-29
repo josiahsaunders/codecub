@@ -215,6 +215,13 @@
     "difficulty": "Easy",
     "testCount": 16,
     "tags": ["string", "fundamentals", "search"]
+  },
+  {
+    "id": "032-extract-quoted-strings",
+    "title": "32. Extract Quoted Strings",
+    "difficulty": "Easy",
+    "testCount": 16,
+    "tags": ["string", "fundamentals", "parsing"]
   }
 
 ]
