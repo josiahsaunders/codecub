@@ -201,5 +201,12 @@
     "difficulty": "Easy",
     "testCount": 8,
     "tags": ["conditionals", "arithmetic", "fundamentals"]
+  },
+  {
+    "id": "030-count-occurrences",
+    "title": "30. Count Element Occurrences",
+    "difficulty": "Easy",
+    "testCount": 15,
+    "tags": ["array", "fundamentals", "search"]
   }
 ]
